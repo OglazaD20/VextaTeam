@@ -1,21 +1,18 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { useUIStore } from "@/hooks/use-ui-store";
 
 export function QuickAddTrigger() {
+  const openQuickAdd = useUIStore((state) => state.openQuickAdd);
+
   return (
     <Button
       variant="outline"
       className="justify-start gap-2 text-muted-foreground"
-      onClick={() =>
-        toast("Quick add is on its way", {
-          description:
-            "Natural-language task capture arrives once the scheduling engine ships.",
-        })
-      }
+      onClick={openQuickAdd}
     >
       <PlusIcon className="size-4" />
       Quick add

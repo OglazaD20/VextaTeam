@@ -8,6 +8,7 @@ import { TopBar } from "@/components/layout/topbar";
 import { ChatRail } from "@/components/layout/chat-rail";
 import { Logo } from "@/components/shared/logo";
 import { QuickAddTrigger } from "@/components/layout/quick-add-trigger";
+import { QuickAddDialog } from "@/components/schedule/quick-add-dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
 export function AppShell({
@@ -42,6 +43,7 @@ export function AppShell({
       </div>
 
       <ChatRail />
+      <QuickAddDialog />
     </div>
   );
 }

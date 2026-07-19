@@ -66,6 +66,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
       };
       user_settings: {
         Row: {
@@ -85,6 +86,7 @@ export interface Database {
           user_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Row"]>;
+        Relationships: [];
       };
       schedule_items: {
         Row: {
@@ -117,6 +119,7 @@ export interface Database {
           title: string;
         };
         Update: Partial<Database["public"]["Tables"]["schedule_items"]["Row"]>;
+        Relationships: [];
       };
       reschedule_events: {
         Row: {
@@ -137,6 +140,7 @@ export interface Database {
           triggered_by: RescheduleTrigger;
         };
         Update: Partial<Database["public"]["Tables"]["reschedule_events"]["Row"]>;
+        Relationships: [];
       };
       habits: {
         Row: {
@@ -157,6 +161,7 @@ export interface Database {
           name: string;
         };
         Update: Partial<Database["public"]["Tables"]["habits"]["Row"]>;
+        Relationships: [];
       };
       habit_logs: {
         Row: {
@@ -174,6 +179,7 @@ export interface Database {
           logged_for_date: string;
         };
         Update: Partial<Database["public"]["Tables"]["habit_logs"]["Row"]>;
+        Relationships: [];
       };
       focus_sessions: {
         Row: {
@@ -194,6 +200,7 @@ export interface Database {
           planned_duration_minutes: number;
         };
         Update: Partial<Database["public"]["Tables"]["focus_sessions"]["Row"]>;
+        Relationships: [];
       };
       mood_logs: {
         Row: {
@@ -209,6 +216,7 @@ export interface Database {
           mood: number;
         };
         Update: Partial<Database["public"]["Tables"]["mood_logs"]["Row"]>;
+        Relationships: [];
       };
       calendar_connections: {
         Row: {
@@ -230,6 +238,7 @@ export interface Database {
           provider: CalendarProvider;
         };
         Update: Partial<Database["public"]["Tables"]["calendar_connections"]["Row"]>;
+        Relationships: [];
       };
       ai_conversations: {
         Row: {
@@ -243,6 +252,7 @@ export interface Database {
           user_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]>;
+        Relationships: [];
       };
       ai_messages: {
         Row: {
@@ -259,6 +269,7 @@ export interface Database {
           content: string;
         };
         Update: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]>;
+        Relationships: [];
       };
       notifications: {
         Row: {
@@ -279,6 +290,7 @@ export interface Database {
           body: string;
         };
         Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [];
       };
       weekly_reports: {
         Row: {
@@ -299,8 +311,13 @@ export interface Database {
           week_start: string;
         };
         Update: Partial<Database["public"]["Tables"]["weekly_reports"]["Row"]>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
 
