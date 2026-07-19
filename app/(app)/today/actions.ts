@@ -34,6 +34,7 @@ export async function createScheduleItem(
     scheduledStart: formData.get("scheduledStart"),
     scheduledEnd: formData.get("scheduledEnd"),
     estimatedDurationMinutes: formData.get("estimatedDurationMinutes"),
+    dueAt: formData.get("dueAt"),
   });
 
   if (!parsed.success) {
@@ -50,9 +51,10 @@ export async function createScheduleItem(
     priority: rest.priority,
     is_fixed: rest.isFixed,
     location: location || null,
-    scheduled_start: rest.scheduledStart,
-    scheduled_end: rest.scheduledEnd,
-    estimated_duration_minutes: rest.estimatedDurationMinutes,
+    scheduled_start: rest.scheduledStart ?? null,
+    scheduled_end: rest.scheduledEnd ?? null,
+    due_at: rest.dueAt ?? null,
+    estimated_duration_minutes: rest.estimatedDurationMinutes ?? null,
     source: "lifeflow",
   });
 

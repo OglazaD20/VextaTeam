@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
 function formatTimeRange(start: string | null, end: string | null) {
-  if (!start) return "Unscheduled";
+  if (!start) return null;
   const formatter = new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
@@ -26,6 +26,13 @@ function formatTimeRange(start: string | null, end: string | null) {
   const startLabel = formatter.format(new Date(start));
   if (!end) return startLabel;
   return `${startLabel} – ${formatter.format(new Date(end))}`;
+}
+
+function formatDueDate(dueAt: string | null) {
+  if (!dueAt) return null;
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(
+    new Date(dueAt),
+  );
 }
 
 export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
@@ -98,7 +105,16 @@ export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
           )}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          <span>{formatTimeRange(item.scheduled_start, item.scheduled_end)}</span>
+          {item.scheduled_start ? (
+            <span>{formatTimeRange(item.scheduled_start, item.scheduled_end)}</span>
+          ) : (
+            <span>
+              {item.estimated_duration_minutes
+                ? `~${item.estimated_duration_minutes} min`
+                : "Duration: AI will estimate"}
+            </span>
+          )}
+          {item.due_at && <span>Due {formatDueDate(item.due_at)}</span>}
           {item.location && (
             <span className="flex items-center gap-1">
               <MapPinIcon className="size-3" />
