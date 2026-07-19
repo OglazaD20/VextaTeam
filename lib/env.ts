@@ -13,6 +13,7 @@ const serverEnvSchema = clientEnvSchema.extend({
   MICROSOFT_CALENDAR_CLIENT_ID: z.string().min(1).optional(),
   MICROSOFT_CALENDAR_CLIENT_SECRET: z.string().min(1).optional(),
   WEATHER_API_KEY: z.string().min(1).optional(),
+  TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
 });
 
 function parseEnv() {
@@ -26,6 +27,7 @@ function parseEnv() {
     MICROSOFT_CALENDAR_CLIENT_ID: process.env.MICROSOFT_CALENDAR_CLIENT_ID,
     MICROSOFT_CALENDAR_CLIENT_SECRET: process.env.MICROSOFT_CALENDAR_CLIENT_SECRET,
     WEATHER_API_KEY: process.env.WEATHER_API_KEY,
+    TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY,
   });
 
   if (!parsed.success) {

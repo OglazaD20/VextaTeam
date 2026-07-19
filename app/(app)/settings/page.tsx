@@ -9,10 +9,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { CalendarConnections } from "@/components/settings/calendar-connections";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Settings — LifeFlow" };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: connections } = user
+    ? await supabase.from("calendar_connections").select("*").eq("user_id", user.id)
+    : { data: [] };
+
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
       <div>
@@ -41,12 +52,12 @@ export default function SettingsPage() {
             <CalendarIcon className="size-4" /> Calendars
           </CardTitle>
           <CardDescription>
-            Connect Google, Outlook, or Apple Calendar for two-way sync.
+            Google Calendar events sync in as fixed anchors on your timeline.
+            Outlook and Apple Calendar are planned for a later milestone.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          No calendars connected yet — this arrives with the Google Calendar
-          sync milestone.
+        <CardContent>
+          <CalendarConnections connections={connections ?? []} />
         </CardContent>
       </Card>
 
