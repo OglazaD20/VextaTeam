@@ -16,6 +16,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Database setup
+
+The schema lives in [`supabase/migrations`](supabase/migrations), numbered in
+the order they must run. Apply them to your Supabase project with either:
+
+**Option A — SQL Editor (no CLI needed)**
+Open your project's SQL Editor at
+`https://supabase.com/dashboard/project/<project-ref>/sql/new`, paste each
+file's contents in order (`0001_...` through `0008_...`), and run each one.
+
+**Option B — Supabase CLI**
+```bash
+supabase link --project-ref <project-ref>
+supabase db push
+```
+
+Row Level Security is enabled on every table — each user can only read/write
+their own rows. A trigger auto-creates a `profiles` + `user_settings` row
+whenever someone signs up.
+
 ## Stack
 
 - **Frontend**: Next.js (App Router), TypeScript, TailwindCSS, shadcn/ui, Framer Motion
