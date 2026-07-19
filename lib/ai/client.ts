@@ -20,3 +20,6 @@ export function getOpenAIClient(): OpenAI {
 
 /** Cheaper/faster model for high-frequency, low-complexity calls (parsing, estimation). */
 export const AI_MODEL_FAST = "gpt-4o-mini";
+
+/** Stronger model for multi-step tool-calling chat reasoning. */
+export const AI_MODEL_CHAT = "gpt-4o";
