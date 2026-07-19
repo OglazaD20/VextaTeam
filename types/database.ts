@@ -1,0 +1,312 @@
+/**
+ * Hand-authored Supabase database types matching docs/ARCHITECTURE.md §4.
+ * Once a Supabase project is linked, replace this file with generated types:
+ *   supabase gen types typescript --project-id <ref> > types/database.ts
+ */
+
+export type ScheduleItemType =
+  | "meeting"
+  | "task"
+  | "deadline"
+  | "habit"
+  | "appointment"
+  | "break";
+export type ScheduleItemStatus =
+  | "planned"
+  | "in_progress"
+  | "completed"
+  | "skipped"
+  | "cancelled";
+export type ScheduleItemSource = "lifeflow" | "google" | "outlook" | "apple" | "ai_suggested";
+export type HabitCategory =
+  | "sleep"
+  | "fitness"
+  | "hydration"
+  | "reading"
+  | "mindfulness"
+  | "movement"
+  | "custom";
+export type HabitCadence = "daily" | "weekly" | "custom";
+export type CalendarProvider = "google" | "outlook" | "apple";
+export type CalendarSyncStatus = "active" | "paused" | "error" | "revoked";
+export type NotificationType =
+  | "leave_now"
+  | "break_reminder"
+  | "weather"
+  | "free_time"
+  | "reschedule"
+  | "habit_skip"
+  | "weekly_report";
+export type ChatRole = "user" | "assistant" | "tool";
+export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimization";
+export type RescheduleTrigger = "user" | "ai" | "system";
+export type Theme = "light" | "dark" | "system";
+export type Chronotype = "early_bird" | "night_owl" | "flexible";
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          timezone: string;
+          onboarding_completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          timezone?: string;
+          onboarding_completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+      };
+      user_settings: {
+        Row: {
+          user_id: string;
+          wake_time: string;
+          sleep_time: string;
+          working_hours: Record<string, [string, string]>;
+          chronotype: Chronotype;
+          default_task_buffer_minutes: number;
+          focus_block_minutes: number;
+          break_minutes: number;
+          theme: Theme;
+          notification_prefs: Record<string, boolean>;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_settings"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_settings"]["Row"]>;
+      };
+      schedule_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: ScheduleItemType;
+          title: string;
+          description: string | null;
+          status: ScheduleItemStatus;
+          priority: number;
+          is_fixed: boolean;
+          estimated_duration_minutes: number | null;
+          actual_duration_minutes: number | null;
+          scheduled_start: string | null;
+          scheduled_end: string | null;
+          due_at: string | null;
+          location: string | null;
+          source: ScheduleItemSource;
+          external_event_id: string | null;
+          habit_id: string | null;
+          parent_item_id: string | null;
+          ai_reasoning: string | null;
+          deleted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["schedule_items"]["Row"]> & {
+          user_id: string;
+          type: ScheduleItemType;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["schedule_items"]["Row"]>;
+      };
+      reschedule_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          schedule_item_id: string | null;
+          reason: RescheduleReason;
+          previous_start: string | null;
+          previous_end: string | null;
+          new_start: string | null;
+          new_end: string | null;
+          triggered_by: RescheduleTrigger;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["reschedule_events"]["Row"]> & {
+          user_id: string;
+          reason: RescheduleReason;
+          triggered_by: RescheduleTrigger;
+        };
+        Update: Partial<Database["public"]["Tables"]["reschedule_events"]["Row"]>;
+      };
+      habits: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          icon: string | null;
+          category: HabitCategory | null;
+          cadence: HabitCadence;
+          target_value: number | null;
+          target_unit: string | null;
+          preferred_time: string | null;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["habits"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["habits"]["Row"]>;
+      };
+      habit_logs: {
+        Row: {
+          id: string;
+          habit_id: string;
+          user_id: string;
+          logged_for_date: string;
+          completed: boolean;
+          value: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["habit_logs"]["Row"]> & {
+          habit_id: string;
+          user_id: string;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["habit_logs"]["Row"]>;
+      };
+      focus_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          schedule_item_id: string | null;
+          planned_duration_minutes: number;
+          actual_duration_minutes: number | null;
+          pomodoro_cycles: number;
+          started_at: string;
+          ended_at: string | null;
+          interrupted: boolean;
+          mood_after: number | null;
+          energy_after: number | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["focus_sessions"]["Row"]> & {
+          user_id: string;
+          planned_duration_minutes: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["focus_sessions"]["Row"]>;
+      };
+      mood_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_at: string;
+          mood: number;
+          energy: number | null;
+          note: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["mood_logs"]["Row"]> & {
+          user_id: string;
+          mood: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["mood_logs"]["Row"]>;
+      };
+      calendar_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: CalendarProvider;
+          account_email: string | null;
+          access_token_encrypted: string | null;
+          refresh_token_encrypted: string | null;
+          token_expires_at: string | null;
+          scopes: string[] | null;
+          sync_status: CalendarSyncStatus;
+          last_synced_at: string | null;
+          sync_cursor: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["calendar_connections"]["Row"]> & {
+          user_id: string;
+          provider: CalendarProvider;
+        };
+        Update: Partial<Database["public"]["Tables"]["calendar_connections"]["Row"]>;
+      };
+      ai_conversations: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]>;
+      };
+      ai_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          role: ChatRole;
+          content: string;
+          tool_calls: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]> & {
+          conversation_id: string;
+          role: ChatRole;
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]>;
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: NotificationType;
+          title: string;
+          body: string;
+          related_item_id: string | null;
+          delivered_at: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
+          user_id: string;
+          type: NotificationType;
+          title: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+      };
+      weekly_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_start: string;
+          productive_minutes: number | null;
+          tasks_completed: number | null;
+          tasks_planned: number | null;
+          focus_score: number | null;
+          habit_streak_summary: Record<string, unknown> | null;
+          mood_trend: Record<string, unknown> | null;
+          ai_recommendations: string[] | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["weekly_reports"]["Row"]> & {
+          user_id: string;
+          week_start: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["weekly_reports"]["Row"]>;
+      };
+    };
+  };
+}
+
+export type Tables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"];
+export type InsertTables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Insert"];
+export type UpdateTables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Update"];
