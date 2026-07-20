@@ -2,6 +2,7 @@ import {
   CalendarClockIcon,
   CalendarDaysIcon,
   LayoutDashboardIcon,
+  LayoutGridIcon,
   ListChecksIcon,
   SettingsIcon,
   SparklesIcon,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 
 export const NAV_ITEMS = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutGridIcon },
   { href: "/today", label: "Today", icon: LayoutDashboardIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
   { href: "/habits", label: "Habits", icon: ListChecksIcon },
