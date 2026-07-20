@@ -14,6 +14,12 @@ export interface ActionResult<T = undefined> {
   data?: T;
 }
 
+function revalidateSchedule() {
+  revalidatePath("/today");
+  revalidatePath("/calendar");
+  revalidatePath("/calendar/day/[date]", "page");
+}
+
 async function requireUser() {
   const supabase = await createClient();
   const {
@@ -148,7 +154,7 @@ export async function createScheduleItem(formData: FormData): Promise<ActionResu
 
   await syncItemTags(supabase, user.id, data.id, formData.get("tagNames"));
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -176,7 +182,7 @@ export async function updateScheduleItem(
 
   await syncItemTags(supabase, user.id, id, formData.get("tagNames"));
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -232,7 +238,7 @@ export async function duplicateTask(id: string): Promise<ActionResult> {
       .insert(tagLinks.map((t) => ({ schedule_item_id: copy.id, tag_id: t.tag_id })));
   }
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -245,7 +251,7 @@ export async function archiveTask(id: string): Promise<ActionResult> {
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -258,7 +264,7 @@ export async function unarchiveTask(id: string): Promise<ActionResult> {
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -275,7 +281,7 @@ export async function reorderTasks(orderedIds: string[]): Promise<ActionResult> 
     ),
   );
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -293,7 +299,7 @@ export async function moveTaskToDay(
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -313,7 +319,7 @@ export async function setScheduleItemStatus(
     return { error: error.message };
   }
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -330,7 +336,7 @@ export async function deleteScheduleItem(id: string): Promise<ActionResult> {
     return { error: error.message };
   }
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -424,7 +430,7 @@ export async function uploadTaskAttachment(
     return { error: insertError.message };
   }
 
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 
@@ -451,7 +457,7 @@ export async function deleteTaskAttachment(attachmentId: string): Promise<Action
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
-  revalidatePath("/today");
+  revalidateSchedule();
   return {};
 }
 

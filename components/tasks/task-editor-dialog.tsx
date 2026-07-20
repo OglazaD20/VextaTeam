@@ -68,7 +68,7 @@ export function TaskEditorDialog({
   item?: Tables<"schedule_items"> | null;
   allTags: string[];
   onSaved?: () => void;
-  /** YYYY-MM-DD to prefill the scheduled time on, when creating from a specific day. */
+  /** "YYYY-MM-DD" or a full "YYYY-MM-DDTHH:mm:ss" to prefill when creating from a specific day/time. */
   defaultDate?: string;
 }) {
   const isEditMode = !!item;
@@ -101,7 +101,9 @@ export function TaskEditorDialog({
     setTags([]);
     setAiSchedule(false);
     setIsFixed(false);
-    const base = defaultDate ? new Date(`${defaultDate}T09:00:00`) : new Date();
+    const base = defaultDate
+      ? new Date(defaultDate.includes("T") ? defaultDate : `${defaultDate}T09:00:00`)
+      : new Date();
     setStartLocal(toLocalInputValue(roundToNextQuarterHour(base)));
     setDurationMinutes("30");
     setDueDate("");

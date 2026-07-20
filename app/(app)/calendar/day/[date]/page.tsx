@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { addDays, subDays } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
+import { ArchivedSection } from "@/components/tasks/archived-section";
 import { DayViewHeader } from "@/components/calendar/day-view-header";
-import { DayTimeline } from "@/components/timeline/day-timeline";
+import { TimelineGrid } from "@/components/calendar/timeline-grid";
+import { UnscheduledList } from "@/components/timeline/unscheduled-list";
 import { getDayRangeUtc } from "@/lib/scheduling/day-range";
 import { dateKey } from "@/lib/scheduling/month-range";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +54,12 @@ export default async function CalendarDayPage({
 
   const { start, end } = getDayRangeUtc(timeZone, resolvedKey);
 
-  const [{ data: items, error }, { data: tagRows }] = await Promise.all([
+  const [
+    { data: items, error },
+    { data: unscheduled, error: unscheduledError },
+    { data: archived, error: archivedError },
+    { data: tagRows },
+  ] = await Promise.all([
     supabase
       .from("schedule_items")
       .select("*")
@@ -62,11 +69,34 @@ export default async function CalendarDayPage({
       .gte("scheduled_start", start.toISOString())
       .lte("scheduled_start", end.toISOString())
       .order("scheduled_start", { ascending: true }),
+    supabase
+      .from("schedule_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .is("archived_at", null)
+      .is("scheduled_start", null)
+      .eq("status", "planned")
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("schedule_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: false })
+      .limit(50),
     supabase.from("tags").select("name").eq("user_id", user.id).order("name"),
   ]);
 
   if (error) {
     throw new Error(`Failed to load that day's schedule: ${error.message}`);
+  }
+  if (unscheduledError) {
+    throw new Error(`Failed to load unscheduled items: ${unscheduledError.message}`);
+  }
+  if (archivedError) {
+    throw new Error(`Failed to load archived tasks: ${archivedError.message}`);
   }
 
   const allTags = (tagRows ?? []).map((t) => t.name);
@@ -82,11 +112,14 @@ export default async function CalendarDayPage({
         monthKey={monthKey}
         allTags={allTags}
       />
-      <DayTimeline
+      <TimelineGrid
         items={items ?? []}
+        dateKey={resolvedKey}
+        timeZone={timeZone}
         allTags={allTags}
-        emptyTitle="Nothing scheduled this day"
       />
+      <UnscheduledList items={unscheduled ?? []} allTags={allTags} />
+      <ArchivedSection items={archived ?? []} />
     </div>
   );
 }

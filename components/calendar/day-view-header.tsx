@@ -2,10 +2,18 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeftIcon, ChevronRightIcon, Loader2Icon, PlusIcon, SparklesIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
+
+interface PlanResponse {
+  scheduled?: number;
+  unscheduled?: number;
+  error?: string;
+}
 
 export function DayViewHeader({
   dateKey,
@@ -22,7 +30,47 @@ export function DayViewHeader({
   monthKey: string;
   allTags?: string[];
 }) {
+  const router = useRouter();
   const [isEditorOpen, setEditorOpen] = React.useState(false);
+  const [isPlanning, setIsPlanning] = React.useState(false);
+
+  async function handlePlanDay() {
+    setIsPlanning(true);
+    try {
+      const response = await fetch("/api/ai/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateKey }),
+      });
+      const result: PlanResponse = await response.json();
+
+      if (!response.ok || result.error) {
+        toast.error("Couldn't plan this day", { description: result.error });
+        return;
+      }
+
+      if (!result.scheduled && !result.unscheduled) {
+        toast.info("Nothing to schedule", {
+          description: "Add a task with \"Let AI find the time\" first.",
+        });
+        return;
+      }
+
+      toast.success(
+        result.scheduled
+          ? `Scheduled ${result.scheduled} item${result.scheduled === 1 ? "" : "s"}`
+          : "Nothing fit that day",
+        result.unscheduled
+          ? { description: `${result.unscheduled} item(s) didn't fit and stayed unscheduled.` }
+          : undefined,
+      );
+      router.refresh();
+    } catch {
+      toast.error("Couldn't reach the AI planner");
+    } finally {
+      setIsPlanning(false);
+    }
+  }
 
   return (
     <div className="flex items-center justify-between">
@@ -45,6 +93,10 @@ export function DayViewHeader({
           <Link href={`/calendar/day/${nextKey}`} aria-label="Next day">
             <ChevronRightIcon className="size-4" />
           </Link>
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePlanDay} disabled={isPlanning}>
+          {isPlanning ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
+          Plan this day
         </Button>
         <Button onClick={() => setEditorOpen(true)} size="sm">
           <PlusIcon /> Add

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { fromZonedTime } from "date-fns-tz";
 
 import { estimateDurations } from "@/lib/ai/estimate-durations";
 import { getWakingWindowUtc } from "@/lib/scheduling/day-range";
@@ -7,7 +8,7 @@ import { solveSchedule } from "@/lib/scheduling/solver";
 import type { FixedInterval, FlexibleItem } from "@/lib/scheduling/types";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,6 +17,9 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  const body = await request.json().catch(() => ({}) as { date?: string });
+  const targetDate = typeof body?.date === "string" ? body.date : null;
 
   const [{ data: profile }, { data: settings }] = await Promise.all([
     supabase.from("profiles").select("timezone").eq("id", user.id).single(),
@@ -27,10 +31,16 @@ export async function POST() {
   ]);
 
   const timeZone = profile?.timezone ?? "UTC";
+  let reference: Date | undefined;
+  if (targetDate && /^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+    const [year, month, day] = targetDate.split("-").map(Number);
+    reference = fromZonedTime(new Date(year, month - 1, day, 12), timeZone);
+  }
   const dayWindow = getWakingWindowUtc(
     timeZone,
     settings?.wake_time ?? "07:00",
     settings?.sleep_time ?? "23:00",
+    reference,
   );
 
   const [{ data: fixedRows, error: fixedError }, { data: flexRows, error: flexError }] =
@@ -122,6 +132,7 @@ export async function POST() {
   );
 
   revalidatePath("/today");
+  revalidatePath("/calendar/day/[date]", "page");
 
   return NextResponse.json({
     scheduled: result.placements.length,

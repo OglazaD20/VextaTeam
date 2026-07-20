@@ -1,0 +1,218 @@
+"use client";
+
+import * as React from "react";
+
+import { moveTaskToDay } from "@/app/(app)/today/actions";
+import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
+import { TimelineBlock } from "@/components/calendar/timeline-block";
+import {
+  clampMinutes,
+  minutesFromMidnight,
+  minutesToPx,
+  pxToMinutes,
+  snapMinutes,
+} from "@/lib/scheduling/timeline-layout";
+import type { Tables } from "@/types/database";
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const GRID_HEIGHT = 24 * 60; // 1px per minute
+
+function formatHourLabel(hour: number) {
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric" }).format(
+    new Date(2000, 0, 1, hour),
+  );
+}
+
+interface DragState {
+  itemId: string;
+  mode: "move" | "resize";
+  startClientY: number;
+  originalStartMinutes: number;
+  originalDurationMinutes: number;
+  previewStartMinutes: number;
+  previewDurationMinutes: number;
+}
+
+export function TimelineGrid({
+  items,
+  dateKey,
+  timeZone,
+  allTags = [],
+}: {
+  items: Tables<"schedule_items">[];
+  dateKey: string;
+  timeZone: string;
+  allTags?: string[];
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const didDragRef = React.useRef(false);
+  const [drag, setDrag] = React.useState<DragState | null>(null);
+  const [editingItem, setEditingItem] = React.useState<Tables<"schedule_items"> | null>(null);
+  const [isEditorOpen, setEditorOpen] = React.useState(false);
+  const [createAt, setCreateAt] = React.useState<string | null>(null);
+
+  const scheduled = items.filter((item) => item.scheduled_start && item.scheduled_end);
+
+  function minutesFromEvent(clientY: number) {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
+    return clampMinutes(pxToMinutes(clientY - rect.top));
+  }
+
+  function handleMoveStart(item: Tables<"schedule_items">, event: React.PointerEvent) {
+    if ((event.target as HTMLElement).closest("button")) return;
+    didDragRef.current = false;
+    const startMinutes = minutesFromMidnight(new Date(item.scheduled_start!), timeZone);
+    const endMinutes = minutesFromMidnight(new Date(item.scheduled_end!), timeZone);
+    setDrag({
+      itemId: item.id,
+      mode: "move",
+      startClientY: event.clientY,
+      originalStartMinutes: startMinutes,
+      originalDurationMinutes: Math.max(15, endMinutes - startMinutes),
+      previewStartMinutes: startMinutes,
+      previewDurationMinutes: Math.max(15, endMinutes - startMinutes),
+    });
+  }
+
+  function handleResizeStart(item: Tables<"schedule_items">, event: React.PointerEvent) {
+    didDragRef.current = false;
+    const startMinutes = minutesFromMidnight(new Date(item.scheduled_start!), timeZone);
+    const endMinutes = minutesFromMidnight(new Date(item.scheduled_end!), timeZone);
+    setDrag({
+      itemId: item.id,
+      mode: "resize",
+      startClientY: event.clientY,
+      originalStartMinutes: startMinutes,
+      originalDurationMinutes: Math.max(15, endMinutes - startMinutes),
+      previewStartMinutes: startMinutes,
+      previewDurationMinutes: Math.max(15, endMinutes - startMinutes),
+    });
+  }
+
+  React.useEffect(() => {
+    if (!drag) return;
+
+    function handlePointerMove(event: PointerEvent) {
+      setDrag((current) => {
+        if (!current) return current;
+        const deltaMinutes = snapMinutes(pxToMinutes(event.clientY - current.startClientY));
+        if (deltaMinutes !== 0) didDragRef.current = true;
+
+        if (current.mode === "move") {
+          const previewStart = clampMinutes(current.originalStartMinutes + deltaMinutes, 0, 1440 - current.originalDurationMinutes);
+          return { ...current, previewStartMinutes: previewStart };
+        }
+
+        const previewDuration = Math.max(
+          15,
+          clampMinutes(current.originalDurationMinutes + deltaMinutes, 15, 1440 - current.originalStartMinutes),
+        );
+        return { ...current, previewDurationMinutes: previewDuration };
+      });
+    }
+
+    function handlePointerUp() {
+      setDrag((current) => {
+        if (!current) return null;
+
+        const unchanged =
+          current.previewStartMinutes === current.originalStartMinutes &&
+          current.previewDurationMinutes === current.originalDurationMinutes;
+
+        const item = items.find((i) => i.id === current.itemId);
+        if (item && !unchanged) {
+          const [year, month, day] = dateKey.split("-").map(Number);
+          const dayStart = new Date(year, month - 1, day);
+          const newStart = new Date(dayStart.getTime() + current.previewStartMinutes * 60_000);
+          const newEnd = new Date(
+            dayStart.getTime() + (current.previewStartMinutes + current.previewDurationMinutes) * 60_000,
+          );
+          void moveTaskToDay(item.id, newStart.toISOString(), newEnd.toISOString());
+        }
+
+        return null;
+      });
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [drag, items, dateKey]);
+
+  function handleGridClick(event: React.MouseEvent) {
+    if (event.target !== event.currentTarget) return;
+    const minutes = snapMinutes(minutesFromEvent(event.clientY));
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEditingItem(null);
+    setCreateAt(`${dateKey}T${pad(hours)}:${pad(mins)}:00`);
+    setEditorOpen(true);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div
+        ref={containerRef}
+        className="relative border-t border-border"
+        style={{ height: GRID_HEIGHT }}
+        onClick={handleGridClick}
+      >
+        {HOURS.map((hour) => (
+          <div
+            key={hour}
+            className="absolute inset-x-0 border-t border-border/60"
+            style={{ top: minutesToPx(hour * 60) }}
+          >
+            <span className="absolute -top-2.5 left-0 w-12 bg-background pr-2 text-right text-[10px] text-muted-foreground">
+              {formatHourLabel(hour)}
+            </span>
+          </div>
+        ))}
+
+        {scheduled.map((item) => {
+          const isDraggingThis = drag?.itemId === item.id;
+          const startMinutes = isDraggingThis
+            ? drag.previewStartMinutes
+            : minutesFromMidnight(new Date(item.scheduled_start!), timeZone);
+          const durationMinutes = isDraggingThis
+            ? drag.previewDurationMinutes
+            : Math.max(
+                15,
+                minutesFromMidnight(new Date(item.scheduled_end!), timeZone) - startMinutes,
+              );
+
+          return (
+            <TimelineBlock
+              key={item.id}
+              item={item}
+              top={minutesToPx(startMinutes)}
+              height={minutesToPx(durationMinutes)}
+              isDragging={isDraggingThis}
+              onMoveStart={(e) => handleMoveStart(item, e)}
+              onResizeStart={(e) => handleResizeStart(item, e)}
+              onOpenEditor={() => {
+                if (drag || didDragRef.current) return;
+                setEditingItem(item);
+                setCreateAt(null);
+                setEditorOpen(true);
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <TaskEditorDialog
+        open={isEditorOpen}
+        onOpenChange={setEditorOpen}
+        item={editingItem}
+        allTags={allTags}
+        defaultDate={createAt ?? dateKey}
+      />
+    </div>
+  );
+}
