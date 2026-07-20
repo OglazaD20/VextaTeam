@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import { addDays, format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { format } from "date-fns";
 
+import { HabitInsights } from "@/components/habits/habit-insights";
 import { HabitStreakList } from "@/components/stats/habit-streak-list";
 import { MoodTrend } from "@/components/stats/mood-trend";
+import { ProductivityChart, type ProductivityPoint } from "@/components/stats/productivity-chart";
+import { RangeTabs } from "@/components/stats/range-tabs";
 import { StatCard } from "@/components/stats/stat-card";
+import {
+  TaskCompletionChart,
+  type TaskCompletionPoint,
+} from "@/components/stats/task-completion-chart";
 import {
   Card,
   CardContent,
@@ -13,12 +19,23 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getHabitsWithStreaks } from "@/lib/habits/get-habits-with-streaks";
-import { getThisWeekRangeUtc } from "@/lib/scheduling/week-range";
+import { getStatsRangeWindow, keyForInstant, type StatsRange } from "@/lib/stats/bucket-range";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Stats — LifeFlow" };
 
-export default async function StatsPage() {
+function parseRange(value: string | undefined): StatsRange {
+  return value === "month" || value === "year" ? value : "week";
+}
+
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const { range: rangeParam } = await searchParams;
+  const range = parseRange(rangeParam);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,23 +52,23 @@ export default async function StatsPage() {
     .single();
 
   const timeZone = profile?.timezone ?? "UTC";
-  const { start, end } = getThisWeekRangeUtc(timeZone);
+  const window = getStatsRangeWindow(range, timeZone);
 
   const [{ data: items, error: itemsError }, { data: sessions, error: sessionsError }] =
     await Promise.all([
       supabase
         .from("schedule_items")
-        .select("status, type")
+        .select("status, type, scheduled_start")
         .eq("user_id", user.id)
         .is("deleted_at", null)
-        .gte("scheduled_start", start.toISOString())
-        .lte("scheduled_start", end.toISOString()),
+        .gte("scheduled_start", window.start.toISOString())
+        .lte("scheduled_start", window.end.toISOString()),
       supabase
         .from("focus_sessions")
         .select("started_at, actual_duration_minutes, planned_duration_minutes, mood_after")
         .eq("user_id", user.id)
-        .gte("started_at", start.toISOString())
-        .lte("started_at", end.toISOString()),
+        .gte("started_at", window.start.toISOString())
+        .lte("started_at", window.end.toISOString()),
     ]);
 
   if (itemsError) throw new Error(`Failed to load tasks: ${itemsError.message}`);
@@ -76,32 +93,71 @@ export default async function StatsPage() {
       ? Math.min(100, Math.round((productiveMinutes / plannedMinutes) * 100))
       : null;
 
-  const weekStartInZone = toZonedTime(start, timeZone);
-  const moodByDay = new Map<string, number[]>();
+  const productivityByBucket = new Map<string, number>();
+  for (const session of finishedSessions) {
+    const key = keyForInstant(new Date(session.started_at), timeZone, window.bucketUnit);
+    productivityByBucket.set(
+      key,
+      (productivityByBucket.get(key) ?? 0) + (session.actual_duration_minutes ?? 0),
+    );
+  }
+  const productivityData: ProductivityPoint[] = window.bucketKeys.map((key) => ({
+    key,
+    label: window.labelForKey(key),
+    productiveMinutes: productivityByBucket.get(key) ?? 0,
+  }));
+
+  const tasksByBucket = new Map<string, { planned: number; completed: number }>();
+  for (const item of items ?? []) {
+    if (!item.scheduled_start) continue;
+    const key = keyForInstant(new Date(item.scheduled_start), timeZone, window.bucketUnit);
+    const entry = tasksByBucket.get(key) ?? { planned: 0, completed: 0 };
+    entry.planned += 1;
+    if (item.status === "completed") entry.completed += 1;
+    tasksByBucket.set(key, entry);
+  }
+  const taskCompletionData: TaskCompletionPoint[] = window.bucketKeys.map((key) => {
+    const entry = tasksByBucket.get(key) ?? { planned: 0, completed: 0 };
+    return {
+      key,
+      label: window.labelForKey(key),
+      tasksPlanned: entry.planned,
+      tasksCompleted: entry.completed,
+    };
+  });
+
+  const moodByBucket = new Map<string, number[]>();
   for (const session of sessions ?? []) {
     if (!session.mood_after) continue;
-    const dayKey = format(toZonedTime(new Date(session.started_at), timeZone), "yyyy-MM-dd");
-    if (!moodByDay.has(dayKey)) moodByDay.set(dayKey, []);
-    moodByDay.get(dayKey)!.push(session.mood_after);
+    const key = keyForInstant(new Date(session.started_at), timeZone, window.bucketUnit);
+    if (!moodByBucket.has(key)) moodByBucket.set(key, []);
+    moodByBucket.get(key)!.push(session.mood_after);
   }
-
-  const moodDays = Array.from({ length: 7 }, (_, i) => {
-    const day = addDays(weekStartInZone, i);
-    const dayKey = format(day, "yyyy-MM-dd");
-    const moods = moodByDay.get(dayKey);
+  const moodData = window.bucketKeys.map((key) => {
+    const moods = moodByBucket.get(key);
     return {
-      label: format(day, "EEE"),
+      label: window.labelForKey(key),
       avgMood: moods && moods.length > 0 ? moods.reduce((a, b) => a + b, 0) / moods.length : null,
     };
   });
 
+  const rangeLabel =
+    range === "week"
+      ? "Last 7 days"
+      : range === "month"
+        ? "Last 30 days"
+        : "Last 12 months";
+
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">This week</h1>
-        <p className="text-sm text-muted-foreground">
-          {format(start, "MMM d")} – {format(end, "MMM d")}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">Stats</h1>
+          <p className="text-sm text-muted-foreground">
+            {rangeLabel} · {format(window.start, "MMM d")} – {format(window.end, "MMM d")}
+          </p>
+        </div>
+        <RangeTabs active={range} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -125,11 +181,29 @@ export default async function StatsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Productive time</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProductivityChart data={productivityData} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Task completion</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TaskCompletionChart data={taskCompletionData} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Mood trend</CardTitle>
           <CardDescription>Logged after focus sessions.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <MoodTrend days={moodDays} />
+        <CardContent className="overflow-x-auto">
+          <MoodTrend days={moodData} />
         </CardContent>
       </Card>
 
@@ -145,11 +219,10 @@ export default async function StatsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">AI recommendations</CardTitle>
-          <CardDescription>
-            Arrives once the AI planning engine ships — this week&apos;s data is
-            already being collected for it.
-          </CardDescription>
         </CardHeader>
+        <CardContent>
+          <HabitInsights />
+        </CardContent>
       </Card>
     </div>
   );
