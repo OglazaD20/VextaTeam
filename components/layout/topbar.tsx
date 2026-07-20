@@ -1,18 +1,22 @@
 "use client";
 
-import { BellIcon, MenuIcon, SparklesIcon } from "lucide-react";
+import { MenuIcon, SparklesIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
+import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { useUIStore } from "@/hooks/use-ui-store";
+import type { Tables } from "@/types/database";
 
 export function TopBar({
   onOpenMobileNav,
   user,
+  notifications,
 }: {
   onOpenMobileNav: () => void;
   user: { name: string | null; email: string | null; avatarUrl: string | null };
+  notifications: Tables<"notifications">[];
 }) {
   const toggleChat = useUIStore((state) => state.toggleChat);
   const today = new Date().toLocaleDateString(undefined, {
@@ -45,9 +49,7 @@ export function TopBar({
         >
           <SparklesIcon />
         </Button>
-        <Button variant="ghost" size="icon" aria-label="Notifications">
-          <BellIcon />
-        </Button>
+        <NotificationsBell notifications={notifications} />
         <ThemeToggle />
         <UserMenu {...user} />
       </div>
