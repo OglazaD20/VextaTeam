@@ -6,7 +6,7 @@ import { Loader2Icon, PlusIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { useUIStore } from "@/hooks/use-ui-store";
+import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
 
 interface PlanResponse {
   scheduled?: number;
@@ -14,10 +14,10 @@ interface PlanResponse {
   error?: string;
 }
 
-export function TodayHeader() {
-  const openQuickAdd = useUIStore((state) => state.openQuickAdd);
+export function TodayHeader({ allTags = [] }: { allTags?: string[] }) {
   const router = useRouter();
   const [isPlanning, setIsPlanning] = React.useState(false);
+  const [isEditorOpen, setEditorOpen] = React.useState(false);
 
   const today = new Date().toLocaleDateString(undefined, {
     weekday: "long",
@@ -70,10 +70,12 @@ export function TodayHeader() {
           {isPlanning ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
           Plan my day
         </Button>
-        <Button onClick={openQuickAdd} size="sm">
+        <Button onClick={() => setEditorOpen(true)} size="sm">
           <PlusIcon /> Add
         </Button>
       </div>
+
+      <TaskEditorDialog open={isEditorOpen} onOpenChange={setEditorOpen} allTags={allTags} />
     </div>
   );
 }

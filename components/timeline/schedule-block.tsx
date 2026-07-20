@@ -2,17 +2,36 @@
 
 import * as React from "react";
 import { useTransition } from "react";
-import { CheckIcon, MoreHorizontalIcon, MapPinIcon, Trash2Icon, UndoIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  CalendarDaysIcon,
+  CheckIcon,
+  CopyIcon,
+  GripVerticalIcon,
+  MapPinIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon,
+  UndoIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteScheduleItem, setScheduleItemStatus } from "@/app/(app)/today/actions";
+import {
+  archiveTask,
+  deleteScheduleItem,
+  duplicateTask,
+  setScheduleItemStatus,
+} from "@/app/(app)/today/actions";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
+import { MoveToDayDialog } from "@/components/tasks/move-to-day-dialog";
 import { CATEGORY_LABEL, CATEGORY_VAR } from "@/lib/scheduling/category-style";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
@@ -35,8 +54,21 @@ function formatDueDate(dueAt: string | null) {
   );
 }
 
-export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
+export function ScheduleBlock({
+  item,
+  allTags = [],
+  dragHandleProps,
+}: {
+  item: Tables<"schedule_items">;
+  allTags?: string[];
+  dragHandleProps?: {
+    attributes: React.HTMLAttributes<HTMLButtonElement>;
+    listeners: Record<string, unknown>;
+  };
+}) {
   const [isPending, startTransition] = useTransition();
+  const [isEditorOpen, setEditorOpen] = React.useState(false);
+  const [isMoveOpen, setMoveOpen] = React.useState(false);
   const isCompleted = item.status === "completed";
 
   function handleToggleComplete() {
@@ -62,14 +94,48 @@ export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
     });
   }
 
+  function handleDuplicate() {
+    startTransition(async () => {
+      const result = await duplicateTask(item.id);
+      if (result.error) {
+        toast.error("Couldn't duplicate that", { description: result.error });
+      } else {
+        toast.success("Task duplicated");
+      }
+    });
+  }
+
+  function handleArchive() {
+    startTransition(async () => {
+      const result = await archiveTask(item.id);
+      if (result.error) {
+        toast.error("Couldn't archive that", { description: result.error });
+      } else {
+        toast.success("Task archived");
+      }
+    });
+  }
+
   return (
     <div
       className={cn(
-        "group flex items-start gap-3 rounded-2xl border border-border bg-card p-4 pl-4 shadow-sm transition-opacity",
+        "group flex items-start gap-2 rounded-2xl border border-border bg-card p-4 pl-4 shadow-sm transition-opacity",
         isPending && "opacity-60",
       )}
       style={{ borderLeft: `3px solid ${CATEGORY_VAR[item.type]}` }}
     >
+      {dragHandleProps && (
+        <button
+          type="button"
+          className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 active:cursor-grabbing"
+          aria-label="Drag to reorder"
+          {...dragHandleProps.attributes}
+          {...dragHandleProps.listeners}
+        >
+          <GripVerticalIcon className="size-4" />
+        </button>
+      )}
+
       <button
         type="button"
         onClick={handleToggleComplete}
@@ -98,6 +164,11 @@ export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
           <Badge variant="outline" className="text-[10px]">
             {CATEGORY_LABEL[item.type]}
           </Badge>
+          {item.category && (
+            <Badge variant="secondary" className="text-[10px]">
+              {item.category}
+            </Badge>
+          )}
           {item.priority <= 2 && !isCompleted && (
             <Badge variant="destructive" className="text-[10px]">
               High priority
@@ -121,6 +192,7 @@ export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
               {item.location}
             </span>
           )}
+          {item.recurrence_rule && <span>🔁 Repeats</span>}
         </div>
         {item.ai_reasoning && (
           <p className="mt-1.5 text-xs text-muted-foreground italic">
@@ -140,15 +212,40 @@ export function ScheduleBlock({ item }: { item: Tables<"schedule_items"> }) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setEditorOpen(true)}>
+            <PencilIcon /> Edit
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleToggleComplete}>
             {isCompleted ? <UndoIcon /> : <CheckIcon />}
             {isCompleted ? "Mark as not done" : "Mark as done"}
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDuplicate}>
+            <CopyIcon /> Duplicate
+          </DropdownMenuItem>
+          {item.scheduled_start && (
+            <DropdownMenuItem onClick={() => setMoveOpen(true)}>
+              <CalendarDaysIcon /> Move to…
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={handleArchive}>
+            <ArchiveIcon /> Archive
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onClick={handleDelete}>
             <Trash2Icon /> Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <TaskEditorDialog
+        open={isEditorOpen}
+        onOpenChange={setEditorOpen}
+        item={item}
+        allTags={allTags}
+      />
+      {item.scheduled_start && (
+        <MoveToDayDialog open={isMoveOpen} onOpenChange={setMoveOpen} item={item} />
+      )}
     </div>
   );
 }

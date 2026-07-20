@@ -11,8 +11,10 @@ import type { Tables } from "@/types/database";
 
 export function DayTimeline({
   items,
+  allTags = [],
 }: {
   items: Tables<"schedule_items">[];
+  allTags?: string[];
 }) {
   const openQuickAdd = useUIStore((state) => state.openQuickAdd);
 
@@ -42,7 +44,7 @@ export function DayTimeline({
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <ScheduleBlock item={item} />
+            <ScheduleBlock item={item} allTags={allTags} />
           </motion.div>
         ))}
       </AnimatePresence>

@@ -7,6 +7,7 @@ export const CATEGORY_LABEL: Record<ScheduleItemType, string> = {
   habit: "Habit",
   appointment: "Appointment",
   break: "Break",
+  activity: "Activity",
 };
 
 export const CATEGORY_VAR: Record<ScheduleItemType, string> = {
@@ -16,4 +17,5 @@ export const CATEGORY_VAR: Record<ScheduleItemType, string> = {
   habit: "var(--category-habit)",
   appointment: "var(--category-appointment)",
   break: "var(--category-break)",
+  activity: "var(--category-activity)",
 };

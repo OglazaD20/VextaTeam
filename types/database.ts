@@ -10,7 +10,8 @@ export type ScheduleItemType =
   | "deadline"
   | "habit"
   | "appointment"
-  | "break";
+  | "break"
+  | "activity";
 export type ScheduleItemStatus =
   | "planned"
   | "in_progress"
@@ -42,6 +43,14 @@ export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimizatio
 export type RescheduleTrigger = "user" | "ai" | "system";
 export type Theme = "light" | "dark" | "system";
 export type Chronotype = "early_bird" | "night_owl" | "flexible";
+
+export interface RecurrenceRule {
+  freq: "daily" | "weekly" | "monthly";
+  interval: number;
+  byWeekday?: number[];
+  until?: string | null;
+  count?: number | null;
+}
 
 export interface Database {
   public: {
@@ -109,6 +118,11 @@ export interface Database {
           habit_id: string | null;
           parent_item_id: string | null;
           ai_reasoning: string | null;
+          category: string | null;
+          notes: string | null;
+          recurrence_rule: RecurrenceRule | null;
+          archived_at: string | null;
+          sort_order: number;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -311,6 +325,52 @@ export interface Database {
           week_start: string;
         };
         Update: Partial<Database["public"]["Tables"]["weekly_reports"]["Row"]>;
+        Relationships: [];
+      };
+      tags: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          color: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["tags"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["tags"]["Row"]>;
+        Relationships: [];
+      };
+      schedule_item_tags: {
+        Row: {
+          schedule_item_id: string;
+          tag_id: string;
+        };
+        Insert: Database["public"]["Tables"]["schedule_item_tags"]["Row"];
+        Update: Partial<Database["public"]["Tables"]["schedule_item_tags"]["Row"]>;
+        Relationships: [];
+      };
+      task_attachments: {
+        Row: {
+          id: string;
+          schedule_item_id: string;
+          user_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size_bytes: number;
+          mime_type: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["task_attachments"]["Row"]> & {
+          schedule_item_id: string;
+          user_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size_bytes: number;
+          mime_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_attachments"]["Row"]>;
         Relationships: [];
       };
     };

@@ -50,6 +50,7 @@
   --category-habit: oklch(0.68 0.15 310);
   --category-appointment: oklch(0.65 0.15 80);
   --category-break: oklch(0.75 0.01 265);
+  --category-activity: oklch(0.66 0.16 200);
 }
 
 .dark {
@@ -93,6 +94,7 @@
   --category-habit: oklch(0.75 0.14 310);
   --category-appointment: oklch(0.72 0.14 80);
   --category-break: oklch(0.4 0.01 265);
+  --category-activity: oklch(0.74 0.15 200);
 }
 
 @theme inline {
@@ -129,6 +131,7 @@
   --color-category-habit: var(--category-habit);
   --color-category-appointment: var(--category-appointment);
   --color-category-break: var(--category-break);
+  --color-category-activity: var(--category-activity);
 
   --radius-sm: calc(var(--radius) - 0.5rem);
   --radius-md: calc(var(--radius) - 0.25rem);
