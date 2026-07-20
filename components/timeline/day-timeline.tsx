@@ -12,9 +12,11 @@ import type { Tables } from "@/types/database";
 export function DayTimeline({
   items,
   allTags = [],
+  emptyTitle = "Nothing on your plate today",
 }: {
   items: Tables<"schedule_items">[];
   allTags?: string[];
+  emptyTitle?: string;
 }) {
   const openQuickAdd = useUIStore((state) => state.openQuickAdd);
 
@@ -22,7 +24,7 @@ export function DayTimeline({
     return (
       <EmptyState
         icon={LayoutDashboardIcon}
-        title="Nothing on your plate today"
+        title={emptyTitle}
         description="Add a meeting, task, or appointment and it'll show up here."
       >
         <Button onClick={openQuickAdd} className="mt-2">

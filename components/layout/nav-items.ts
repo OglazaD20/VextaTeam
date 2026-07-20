@@ -1,5 +1,6 @@
 import {
   CalendarClockIcon,
+  CalendarDaysIcon,
   LayoutDashboardIcon,
   ListChecksIcon,
   SettingsIcon,
@@ -9,6 +10,7 @@ import {
 
 export const NAV_ITEMS = [
   { href: "/today", label: "Today", icon: LayoutDashboardIcon },
+  { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
   { href: "/habits", label: "Habits", icon: ListChecksIcon },
   { href: "/focus", label: "Focus", icon: TimerIcon },
   { href: "/stats", label: "Stats", icon: CalendarClockIcon },

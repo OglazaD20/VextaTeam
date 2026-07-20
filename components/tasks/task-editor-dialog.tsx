@@ -61,12 +61,15 @@ export function TaskEditorDialog({
   item,
   allTags,
   onSaved,
+  defaultDate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Tables<"schedule_items"> | null;
   allTags: string[];
   onSaved?: () => void;
+  /** YYYY-MM-DD to prefill the scheduled time on, when creating from a specific day. */
+  defaultDate?: string;
 }) {
   const isEditMode = !!item;
   const [isPending, startTransition] = React.useTransition();
@@ -98,12 +101,13 @@ export function TaskEditorDialog({
     setTags([]);
     setAiSchedule(false);
     setIsFixed(false);
-    setStartLocal(toLocalInputValue(roundToNextQuarterHour(new Date())));
+    const base = defaultDate ? new Date(`${defaultDate}T09:00:00`) : new Date();
+    setStartLocal(toLocalInputValue(roundToNextQuarterHour(base)));
     setDurationMinutes("30");
     setDueDate("");
     setRecurrenceRule(null);
     setAttachments([]);
-  }, []);
+  }, [defaultDate]);
 
   const loadTaskDetails = React.useCallback(async (task: Tables<"schedule_items">) => {
     setTitle(task.title);
