@@ -167,6 +167,9 @@ export interface Database {
           target_value: number | null;
           target_unit: string | null;
           preferred_time: string | null;
+          reminder_enabled: boolean;
+          paused_at: string | null;
+          sort_order: number;
           is_active: boolean;
           created_at: string;
         };

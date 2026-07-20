@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { ListChecksIcon } from "lucide-react";
 
 import { AddHabitDialog } from "@/components/habits/add-habit-dialog";
-import { HabitCard } from "@/components/habits/habit-card";
+import { HabitInsights } from "@/components/habits/habit-insights";
+import { HabitList } from "@/components/habits/habit-list";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getHabitsWithStreaks } from "@/lib/habits/get-habits-with-streaks";
 import { getTodayKey } from "@/lib/habits/today-key";
@@ -39,7 +40,10 @@ export default async function HabitsPage() {
             Small routines, tracked automatically.
           </p>
         </div>
-        <AddHabitDialog />
+        <div className="flex items-center gap-2">
+          <HabitInsights />
+          <AddHabitDialog />
+        </div>
       </div>
 
       {habitsWithStreaks.length === 0 ? (
@@ -49,17 +53,7 @@ export default async function HabitsPage() {
           description="Add sleep, gym, water, reading, meditation, or walking and LifeFlow will track streaks for you."
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {habitsWithStreaks.map(({ habit, streak, isCompletedToday }) => (
-            <HabitCard
-              key={habit.id}
-              habit={habit}
-              streak={streak}
-              isCompletedToday={isCompletedToday}
-              dateKey={todayKey}
-            />
-          ))}
-        </div>
+        <HabitList entries={habitsWithStreaks} dateKey={todayKey} />
       )}
     </div>
   );

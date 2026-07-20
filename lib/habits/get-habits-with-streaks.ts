@@ -16,6 +16,7 @@ export async function getHabitsWithStreaks(
     .select("*")
     .eq("user_id", userId)
     .eq("is_active", true)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
   if (habitsError) {

@@ -30,6 +30,12 @@ export const createHabitSchema = z.object({
   targetValue: optionalPositiveNumber,
   targetUnit: optionalTrimmed(40),
   preferredTime: optionalTrimmed(8),
+  reminderEnabled: z.coerce.boolean().default(false),
 });
 
 export type CreateHabitInput = z.infer<typeof createHabitSchema>;
+
+export const updateHabitSchema = createHabitSchema.partial().extend({
+  name: createHabitSchema.shape.name,
+});
+export type UpdateHabitInput = z.infer<typeof updateHabitSchema>;
