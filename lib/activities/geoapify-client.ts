@@ -9,6 +9,13 @@ export const ACTIVITY_CATEGORIES = {
   active: "sport",
   relax: "leisure.spa,catering.cafe",
   social: "entertainment,catering.bar",
+  entertainment: "entertainment.cinema,entertainment.theme_park,entertainment.zoo,entertainment.aquarium",
+  nightlife: "entertainment.nightclub,entertainment.casino,catering.bar",
+  shopping: "commercial.shopping_mall,commercial",
+  adventure: "sport,natural",
+  gaming: "entertainment.bowling_alley,entertainment.miniature_golf,entertainment.escape_game",
+  learning: "education,entertainment.museum",
+  family: "leisure.playground,entertainment.zoo,entertainment.theme_park",
 } as const;
 
 export type ActivityCategory = keyof typeof ACTIVITY_CATEGORIES;
@@ -18,6 +25,9 @@ export interface PlaceCandidate {
   category: string;
   address: string | null;
   location: LatLng;
+  openingHours: string | null;
+  website: string | null;
+  phone: string | null;
 }
 
 interface GeoapifyFeature {
@@ -27,6 +37,10 @@ interface GeoapifyFeature {
     categories?: string[];
     lat: number;
     lon: number;
+    opening_hours?: string;
+    website?: string;
+    phone?: string;
+    contact?: { phone?: string };
   };
 }
 
@@ -64,7 +78,29 @@ export async function searchNearbyPlaces(
       category: f.properties.categories?.[0] ?? "unknown",
       address: f.properties.formatted ?? null,
       location: { lat: f.properties.lat, lng: f.properties.lon },
+      openingHours: f.properties.opening_hours ?? null,
+      website: f.properties.website ?? null,
+      phone: f.properties.phone ?? f.properties.contact?.phone ?? null,
     }));
+}
+
+/**
+ * Geoapify only tells us the specific leaf category of a matched place (e.g.
+ * "catering.restaurant.pizza"), not which of our requested buckets it came
+ * from. Match it back by prefix against each requested bucket's category
+ * list so suggestions can be tagged with a single ActivityCategory.
+ */
+export function inferActivityCategory(
+  rawCategory: string,
+  requested: ActivityCategory[],
+): ActivityCategory {
+  for (const bucket of requested) {
+    const prefixes = ACTIVITY_CATEGORIES[bucket].split(",");
+    if (prefixes.some((prefix) => rawCategory.startsWith(prefix))) {
+      return bucket;
+    }
+  }
+  return requested[0];
 }
 
 export function buildStaticMapUrl(location: LatLng, width = 400, height = 200): string {

@@ -507,6 +507,31 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["activity_suggestions"]["Row"]>;
         Relationships: [];
       };
+      saved_activities: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: "place" | "event";
+          title: string;
+          subtitle: string;
+          lat: number;
+          lng: number;
+          starts_at: string | null;
+          data: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["saved_activities"]["Row"]> & {
+          user_id: string;
+          kind: "place" | "event";
+          title: string;
+          subtitle: string;
+          lat: number;
+          lng: number;
+          data: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["saved_activities"]["Row"]>;
+        Relationships: [];
+      };
       task_subtasks: {
         Row: {
           id: string;

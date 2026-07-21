@@ -2,7 +2,12 @@ import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "@/lib/ai/client";
 import { estimateTravelMinutes, haversineDistanceKm, type LatLng } from "./distance";
-import { searchNearbyPlaces, type ActivityCategory, type PlaceCandidate } from "./geoapify-client";
+import {
+  inferActivityCategory,
+  searchNearbyPlaces,
+  type ActivityCategory,
+  type PlaceCandidate,
+} from "./geoapify-client";
 import { getCurrentWeather, type WeatherSnapshot } from "./weather-client";
 
 export interface DiscoverFilters {
@@ -13,6 +18,10 @@ export interface DiscoverFilters {
   budget: "free" | "low" | "medium" | "high";
   indoorOutdoor: "indoor" | "outdoor" | "any";
   social: "solo" | "group" | "any";
+  /** Place names to leave out of the results — used by "generate similar" to avoid re-suggesting the reference place. */
+  excludePlaceNames?: string[];
+  /** When set, biases the AI toward picks with a similar vibe to this place instead of maximizing variety. */
+  similarTo?: { placeName: string; pitch: string };
 }
 
 export interface ActivitySuggestion {
@@ -28,6 +37,9 @@ export interface ActivitySuggestion {
   costTier: "free" | "low" | "medium" | "high";
   indoorOutdoor: "indoor" | "outdoor";
   weather: WeatherSnapshot;
+  category: ActivityCategory;
+  openingHours: string | null;
+  website: string | null;
 }
 
 const suggestionsSchema = z.object({
@@ -43,8 +55,15 @@ const suggestionsSchema = z.object({
   ),
 });
 
-function rankedCandidates(candidates: PlaceCandidate[], location: LatLng, maxDistanceKm: number) {
+function rankedCandidates(
+  candidates: PlaceCandidate[],
+  location: LatLng,
+  maxDistanceKm: number,
+  excludePlaceNames: string[],
+) {
+  const excluded = new Set(excludePlaceNames.map((n) => n.toLowerCase()));
   return candidates
+    .filter((place) => !excluded.has(place.name.toLowerCase()))
     .map((place) => ({ place, distanceKm: haversineDistanceKm(location, place.location) }))
     .filter((c) => c.distanceKm <= maxDistanceKm)
     .sort((a, b) => a.distanceKm - b.distanceKm)
@@ -57,7 +76,12 @@ export async function discoverActivities(filters: DiscoverFilters): Promise<Acti
     getCurrentWeather(filters.location),
   ]);
 
-  const ranked = rankedCandidates(places, filters.location, filters.maxDistanceKm);
+  const ranked = rankedCandidates(
+    places,
+    filters.location,
+    filters.maxDistanceKm,
+    filters.excludePlaceNames ?? [],
+  );
   if (ranked.length === 0) {
     return [];
   }
@@ -74,7 +98,10 @@ export async function discoverActivities(filters: DiscoverFilters): Promise<Acti
           "best candidates given the user's filters and current weather (avoid outdoor picks in rain, " +
           "prefer them in good weather). Write a short, vivid one-sentence pitch per suggestion, in the " +
           "style of \"Go for a sunset walk in Łazienki Park.\" Reference each pick by its candidateIndex " +
-          "in the provided list.",
+          "in the provided list." +
+          (filters.similarTo
+            ? ` The user specifically liked "${filters.similarTo.placeName}" (${filters.similarTo.pitch}) — favor candidates with a similar vibe over maximizing variety.`
+            : ""),
       },
       {
         role: "user",
@@ -159,6 +186,9 @@ export async function discoverActivities(filters: DiscoverFilters): Promise<Acti
         costTier: s.costTier,
         indoorOutdoor: s.indoorOutdoor,
         weather,
+        category: inferActivityCategory(candidate.place.category, filters.categories),
+        openingHours: candidate.place.openingHours,
+        website: candidate.place.website,
       };
     });
 }

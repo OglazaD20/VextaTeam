@@ -16,6 +16,7 @@ const serverEnvSchema = clientEnvSchema.extend({
   TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
   USDA_FDC_API_KEY: z.string().min(1).optional(),
   PLACES_API_KEY: z.string().min(1).optional(),
+  TICKETMASTER_API_KEY: z.string().min(1).optional(),
 });
 
 function parseEnv() {
@@ -32,6 +33,7 @@ function parseEnv() {
     TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY,
     USDA_FDC_API_KEY: process.env.USDA_FDC_API_KEY,
     PLACES_API_KEY: process.env.PLACES_API_KEY,
+    TICKETMASTER_API_KEY: process.env.TICKETMASTER_API_KEY,
   });
 
   if (!parsed.success) {

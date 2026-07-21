@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
+import { getSavedActivities } from "@/app/(app)/discover/actions";
 import { DiscoverClient } from "@/components/discover/discover-client";
+import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Discover — LifeFlow" };
@@ -15,6 +17,8 @@ export default async function DiscoverPage() {
     return null;
   }
 
+  const savedActivities = await getSavedActivities();
+
   return (
     <div className="mx-auto flex h-full max-w-3xl flex-col gap-6 p-6">
       <div>
@@ -23,7 +27,10 @@ export default async function DiscoverPage() {
           Find something to do nearby, matched to your time, budget, and the weather.
         </p>
       </div>
-      <DiscoverClient />
+      <DiscoverClient
+        eventsAvailable={Boolean(env.TICKETMASTER_API_KEY)}
+        initialSavedActivities={savedActivities}
+      />
     </div>
   );
 }
