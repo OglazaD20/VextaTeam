@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { revokeGoogleToken } from "@/lib/calendar/google";
+import { revokeGoogleToken, stopWatchChannel } from "@/lib/calendar/google";
 import { decryptSecret } from "@/lib/security/encryption";
 import { createClient } from "@/lib/supabase/server";
 
@@ -85,13 +85,17 @@ export async function disconnectCalendar(connectionId: string): Promise<ActionRe
 
   const { data: connection } = await supabase
     .from("calendar_connections")
-    .select("access_token_encrypted")
+    .select("access_token_encrypted, channel_id, channel_resource_id")
     .eq("id", connectionId)
     .eq("user_id", user.id)
     .single();
 
   if (connection?.access_token_encrypted) {
-    await revokeGoogleToken(decryptSecret(connection.access_token_encrypted));
+    const accessToken = decryptSecret(connection.access_token_encrypted);
+    if (connection.channel_id && connection.channel_resource_id) {
+      await stopWatchChannel(accessToken, connection.channel_id, connection.channel_resource_id);
+    }
+    await revokeGoogleToken(accessToken);
   }
 
   const { error } = await supabase

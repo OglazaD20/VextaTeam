@@ -119,6 +119,7 @@ export interface Database {
           location: string | null;
           source: ScheduleItemSource;
           external_event_id: string | null;
+          external_updated_at: string | null;
           habit_id: string | null;
           parent_item_id: string | null;
           ai_reasoning: string | null;
@@ -252,6 +253,9 @@ export interface Database {
           sync_status: CalendarSyncStatus;
           last_synced_at: string | null;
           sync_cursor: string | null;
+          channel_id: string | null;
+          channel_resource_id: string | null;
+          channel_expiration: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["calendar_connections"]["Row"]> & {

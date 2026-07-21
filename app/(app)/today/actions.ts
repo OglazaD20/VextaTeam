@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { deleteIfGoogleConnected, pushIfGoogleConnected } from "@/lib/calendar/sync";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 import {
@@ -146,7 +147,7 @@ export async function createScheduleItem(formData: FormData): Promise<ActionResu
       estimated_duration_minutes: parsed.data.estimatedDurationMinutes ?? null,
       recurrence_rule: parsed.data.recurrenceRule ?? null,
     })
-    .select("id")
+    .select("id, title, location, scheduled_start, scheduled_end, external_event_id, is_fixed")
     .single();
 
   if (error || !data) {
@@ -154,6 +155,7 @@ export async function createScheduleItem(formData: FormData): Promise<ActionResu
   }
 
   await syncItemTags(supabase, user.id, data.id, formData.get("tagNames"));
+  await pushIfGoogleConnected(supabase, user.id, data);
 
   revalidateSchedule();
   return {};
@@ -171,17 +173,20 @@ export async function updateScheduleItem(
 
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("schedule_items")
     .update(taskFieldsToRow(parsed.data))
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id, title, location, scheduled_start, scheduled_end, external_event_id, is_fixed")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
   await syncItemTags(supabase, user.id, id, formData.get("tagNames"));
+  if (data) await pushIfGoogleConnected(supabase, user.id, data);
 
   revalidateSchedule();
   return {};
@@ -293,13 +298,16 @@ export async function moveTaskToDay(
 ): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("schedule_items")
     .update({ scheduled_start: newScheduledStart, scheduled_end: newScheduledEnd })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id, title, location, scheduled_start, scheduled_end, external_event_id, is_fixed")
+    .single();
 
   if (error) return { error: error.message };
+  if (data) await pushIfGoogleConnected(supabase, user.id, data);
   revalidateSchedule();
   return {};
 }
@@ -327,15 +335,19 @@ export async function setScheduleItemStatus(
 export async function deleteScheduleItem(id: string): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("schedule_items")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("external_event_id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
+
+  if (data) await deleteIfGoogleConnected(supabase, user.id, data.external_event_id);
 
   revalidateSchedule();
   return {};

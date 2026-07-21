@@ -36,5 +36,7 @@ export async function POST() {
 
   revalidatePath("/today");
   revalidatePath("/settings");
+  revalidatePath("/calendar");
+  revalidatePath("/calendar/day/[date]", "page");
   return NextResponse.json({ synced: result.synced });
 }

@@ -114,31 +114,180 @@ export interface GoogleCalendarEvent {
   summary: string;
   location?: string;
   status: string;
-  start: { dateTime?: string; date?: string };
-  end: { dateTime?: string; date?: string };
+  updated: string;
+  start: { dateTime?: string; date?: string; timeZone?: string };
+  end: { dateTime?: string; date?: string; timeZone?: string };
 }
 
+export interface FetchEventsResult {
+  events: GoogleCalendarEvent[];
+  nextSyncToken: string | null;
+  /** Google invalidates the syncToken (410 Gone) if too much time has passed — caller must do a full resync. */
+  syncTokenInvalid: boolean;
+}
+
+/**
+ * Fetches events either as a fresh window (timeMin/timeMax) or, when
+ * syncToken is provided, incrementally — only what's changed since the last
+ * sync, per Google's incremental sync protocol.
+ */
 export async function fetchCalendarEvents(
   accessToken: string,
-  timeMinIso: string,
-  timeMaxIso: string,
-): Promise<GoogleCalendarEvent[]> {
+  window: { timeMinIso: string; timeMaxIso: string } | { syncToken: string },
+): Promise<FetchEventsResult> {
   const params = new URLSearchParams({
-    timeMin: timeMinIso,
-    timeMax: timeMaxIso,
     singleEvents: "true",
-    orderBy: "startTime",
     maxResults: "250",
   });
+
+  if ("syncToken" in window) {
+    params.set("syncToken", window.syncToken);
+  } else {
+    params.set("timeMin", window.timeMinIso);
+    params.set("timeMax", window.timeMaxIso);
+    params.set("orderBy", "startTime");
+  }
 
   const response = await fetch(`${GOOGLE_CALENDAR_API}/calendars/primary/events?${params}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+
+  if (response.status === 410) {
+    return { events: [], nextSyncToken: null, syncTokenInvalid: true };
+  }
 
   if (!response.ok) {
     throw new Error(`Google Calendar fetch failed: ${await response.text()}`);
   }
 
   const data = await response.json();
-  return (data.items ?? []) as GoogleCalendarEvent[];
+  return {
+    events: (data.items ?? []) as GoogleCalendarEvent[],
+    nextSyncToken: data.nextSyncToken ?? null,
+    syncTokenInvalid: false,
+  };
+}
+
+export interface EventWriteInput {
+  title: string;
+  location: string | null;
+  start: Date;
+  end: Date;
+  timeZone: string;
+}
+
+function toEventBody(input: EventWriteInput) {
+  return {
+    summary: input.title,
+    location: input.location ?? undefined,
+    start: { dateTime: input.start.toISOString(), timeZone: input.timeZone },
+    end: { dateTime: input.end.toISOString(), timeZone: input.timeZone },
+  };
+}
+
+export async function createCalendarEvent(
+  accessToken: string,
+  input: EventWriteInput,
+): Promise<GoogleCalendarEvent> {
+  const response = await fetch(`${GOOGLE_CALENDAR_API}/calendars/primary/events`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(toEventBody(input)),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Calendar create failed: ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
+export async function updateCalendarEvent(
+  accessToken: string,
+  eventId: string,
+  input: EventWriteInput,
+): Promise<GoogleCalendarEvent> {
+  const response = await fetch(`${GOOGLE_CALENDAR_API}/calendars/primary/events/${eventId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(toEventBody(input)),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Calendar update failed: ${await response.text()}`);
+  }
+
+  return response.json();
+}
+
+export async function deleteCalendarEvent(accessToken: string, eventId: string): Promise<void> {
+  const response = await fetch(`${GOOGLE_CALENDAR_API}/calendars/primary/events/${eventId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  // 410 Gone means it's already deleted on Google's side — treat as success.
+  if (!response.ok && response.status !== 410 && response.status !== 404) {
+    throw new Error(`Google Calendar delete failed: ${await response.text()}`);
+  }
+}
+
+export interface WatchChannel {
+  channelId: string;
+  resourceId: string;
+  expiration: string;
+}
+
+/**
+ * Registers a push-notification channel so Google POSTs to webhookUrl
+ * whenever this calendar changes, instead of relying on manual/polled sync.
+ * Channels expire (Calendar's max is ~1 month) and must be renewed.
+ */
+export async function watchCalendarEvents(
+  accessToken: string,
+  channelId: string,
+  webhookUrl: string,
+): Promise<WatchChannel> {
+  const response = await fetch(`${GOOGLE_CALENDAR_API}/calendars/primary/events/watch`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id: channelId, type: "web_hook", address: webhookUrl }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Calendar watch failed: ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  return {
+    channelId: data.id,
+    resourceId: data.resourceId,
+    expiration: new Date(Number(data.expiration)).toISOString(),
+  };
+}
+
+export async function stopWatchChannel(
+  accessToken: string,
+  channelId: string,
+  resourceId: string,
+): Promise<void> {
+  await fetch(`${GOOGLE_CALENDAR_API}/channels/stop`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id: channelId, resourceId }),
+  }).catch(() => {
+    // Best-effort — the channel will simply expire on its own otherwise.
+  });
 }
