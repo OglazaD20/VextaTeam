@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { CoachPanel } from "@/components/coach/coach-panel";
 import { HabitInsights } from "@/components/habits/habit-insights";
 import { HabitStreakList } from "@/components/stats/habit-streak-list";
 import { StatCard } from "@/components/stats/stat-card";
@@ -170,7 +171,16 @@ export default async function DashboardPage() {
 
       <Card className="glass-surface">
         <CardHeader>
-          <CardTitle className="text-base">AI recommendations</CardTitle>
+          <CardTitle className="text-base">AI Coach</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CoachPanel />
+        </CardContent>
+      </Card>
+
+      <Card className="glass-surface">
+        <CardHeader>
+          <CardTitle className="text-base">Habit tips</CardTitle>
         </CardHeader>
         <CardContent>
           <HabitInsights />

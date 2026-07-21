@@ -602,6 +602,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["health_metrics"]["Row"]>;
         Relationships: [];
       };
+      coach_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          period: "daily" | "weekly" | "monthly";
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["coach_insights"]["Row"]> & {
+          user_id: string;
+          period: "daily" | "weekly" | "monthly";
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["coach_insights"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
