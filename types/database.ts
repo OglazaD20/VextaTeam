@@ -43,6 +43,8 @@ export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimizatio
 export type RescheduleTrigger = "user" | "ai" | "system";
 export type Theme = "light" | "dark" | "system";
 export type Chronotype = "early_bird" | "night_owl" | "flexible";
+export type FoodSource = "usda" | "custom";
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "drink";
 
 export interface RecurrenceRule {
   freq: "daily" | "weekly" | "monthly";
@@ -374,6 +376,105 @@ export interface Database {
           mime_type: string;
         };
         Update: Partial<Database["public"]["Tables"]["task_attachments"]["Row"]>;
+        Relationships: [];
+      };
+      foods: {
+        Row: {
+          id: string;
+          name: string;
+          brand: string | null;
+          calories: number;
+          protein_g: number;
+          fat_g: number;
+          carbs_g: number;
+          fiber_g: number;
+          serving_size: number;
+          serving_unit: string;
+          source: FoodSource;
+          external_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["foods"]["Row"]> & {
+          name: string;
+          calories: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["foods"]["Row"]>;
+        Relationships: [];
+      };
+      food_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          food_id: string | null;
+          meal_type: MealType;
+          logged_at: string;
+          quantity: number;
+          calories: number;
+          protein_g: number;
+          fat_g: number;
+          carbs_g: number;
+          fiber_g: number;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["food_logs"]["Row"]> & {
+          user_id: string;
+          meal_type: MealType;
+          calories: number;
+          protein_g: number;
+          fat_g: number;
+          carbs_g: number;
+          fiber_g: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["food_logs"]["Row"]>;
+        Relationships: [];
+      };
+      water_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_at: string;
+          amount_ml: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["water_logs"]["Row"]> & {
+          user_id: string;
+          amount_ml: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["water_logs"]["Row"]>;
+        Relationships: [];
+      };
+      body_metrics: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_for_date: string;
+          weight_kg: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["body_metrics"]["Row"]> & {
+          user_id: string;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["body_metrics"]["Row"]>;
+        Relationships: [];
+      };
+      nutrition_settings: {
+        Row: {
+          user_id: string;
+          daily_calorie_goal: number;
+          protein_goal_g: number;
+          carbs_goal_g: number;
+          fat_goal_g: number;
+          fiber_goal_g: number;
+          water_goal_ml: number;
+          height_cm: number | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]>;
         Relationships: [];
       };
     };

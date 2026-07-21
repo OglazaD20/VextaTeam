@@ -8,6 +8,7 @@ const PROTECTED_PREFIXES = [
   "/today",
   "/calendar",
   "/habits",
+  "/nutrition",
   "/focus",
   "/stats",
   "/chat",
