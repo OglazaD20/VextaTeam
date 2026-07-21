@@ -5,6 +5,7 @@ import { CalendarIcon, MapPinIcon, PlusIcon, Share2Icon, StarIcon, TicketIcon } 
 import { toast } from "sonner";
 
 import { addEventToSchedule, saveActivity } from "@/app/(app)/discover/actions";
+import { ResilientImage } from "@/components/shared/resilient-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { EventCandidate } from "@/lib/activities/ticketmaster-client";
@@ -88,12 +89,11 @@ export function EventCard({ event }: { event: EventCandidate & { distanceKm: num
   return (
     <div className="glass-surface flex flex-col gap-3 rounded-2xl border border-border p-4 shadow-sm">
       {event.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- external event artwork from Ticketmaster, not optimizable
-        <img
+        <ResilientImage
           src={event.imageUrl}
           alt={event.name}
-          className="h-32 w-full rounded-xl object-cover"
-          loading="lazy"
+          className="h-32 w-full"
+          fallbackIcon={TicketIcon}
         />
       ) : (
         <div className="flex h-32 w-full items-center justify-center rounded-xl bg-muted">

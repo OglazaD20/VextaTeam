@@ -23,6 +23,25 @@ function formatHourLabel(hour: number) {
   );
 }
 
+/** Static gridlines — memoized so dragging a block (which re-renders TimelineGrid on every pointermove) doesn't reconcile these 24 nodes every frame. */
+const HourGridLines = React.memo(function HourGridLines() {
+  return (
+    <>
+      {HOURS.map((hour) => (
+        <div
+          key={hour}
+          className="absolute inset-x-0 border-t border-border/60"
+          style={{ top: minutesToPx(hour * 60) }}
+        >
+          <span className="absolute -top-2.5 left-0 w-12 bg-background pr-2 text-right text-[10px] text-muted-foreground">
+            {formatHourLabel(hour)}
+          </span>
+        </div>
+      ))}
+    </>
+  );
+});
+
 interface DragState {
   itemId: string;
   mode: "move" | "resize";
@@ -51,7 +70,10 @@ export function TimelineGrid({
   const [isEditorOpen, setEditorOpen] = React.useState(false);
   const [createAt, setCreateAt] = React.useState<string | null>(null);
 
-  const scheduled = items.filter((item) => item.scheduled_start && item.scheduled_end);
+  const scheduled = React.useMemo(
+    () => items.filter((item) => item.scheduled_start && item.scheduled_end),
+    [items],
+  );
 
   function minutesFromEvent(clientY: number) {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -162,17 +184,7 @@ export function TimelineGrid({
         style={{ height: GRID_HEIGHT }}
         onClick={handleGridClick}
       >
-        {HOURS.map((hour) => (
-          <div
-            key={hour}
-            className="absolute inset-x-0 border-t border-border/60"
-            style={{ top: minutesToPx(hour * 60) }}
-          >
-            <span className="absolute -top-2.5 left-0 w-12 bg-background pr-2 text-right text-[10px] text-muted-foreground">
-              {formatHourLabel(hour)}
-            </span>
-          </div>
-        ))}
+        <HourGridLines />
 
         {scheduled.map((item) => {
           const isDraggingThis = drag?.itemId === item.id;

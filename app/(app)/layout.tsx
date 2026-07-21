@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { generateContextualNotifications } from "@/lib/notifications/generate";
@@ -25,8 +26,8 @@ export default async function AppLayout({
     .single();
   const timeZone = profile?.timezone ?? "UTC";
 
-  // Best-effort: notification generation should never block the page.
-  await generateContextualNotifications(supabase, user.id, timeZone).catch(() => {});
+  // Best-effort: runs after the response is sent so it never blocks a page navigation.
+  after(() => generateContextualNotifications(supabase, user.id, timeZone).catch(() => {}));
 
   const { data: notifications } = await supabase
     .from("notifications")

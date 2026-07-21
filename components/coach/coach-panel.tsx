@@ -24,25 +24,26 @@ export function CoachPanel() {
   const [data, setData] = React.useState<CoachData | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [hasFetchedInitial, setHasFetchedInitial] = React.useState<Period | null>(null);
 
-  const loadCached = React.useCallback(async (p: Period) => {
+  React.useEffect(() => {
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- must show loading immediately when `period` changes, before the fetch resolves
     setIsLoading(true);
-    try {
-      const response = await fetch(`/api/ai/coach?period=${p}`);
-      const json = await response.json();
-      setData(json.data ?? null);
-    } catch {
-      // Silent — this is a best-effort cached fetch, "Refresh" still works.
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  if (hasFetchedInitial !== period) {
-    setHasFetchedInitial(period);
-    void loadCached(period);
-  }
+    fetch(`/api/ai/coach?period=${period}`)
+      .then((response) => response.json())
+      .then((json) => {
+        if (!cancelled) setData(json.data ?? null);
+      })
+      .catch(() => {
+        // Silent — this is a best-effort cached fetch, "Refresh" still works.
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
 
   async function handleGenerate() {
     setIsGenerating(true);

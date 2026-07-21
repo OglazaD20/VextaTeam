@@ -193,7 +193,8 @@ export async function getSavedActivities(): Promise<Tables<"saved_activities">[]
     .from("saved_activities")
     .select("*")
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   return data ?? [];
 }

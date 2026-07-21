@@ -144,36 +144,46 @@ export async function generateContextualNotifications(
 
     const todayKey = getTodayKey(timeZone, now);
     const { start: todayStart } = getTodayRangeUtc(timeZone, now);
+    const habitIds = (habits ?? []).map((h) => h.id);
 
-    for (const habit of habits ?? []) {
-      const { data: log } = await supabase
-        .from("habit_logs")
-        .select("id")
-        .eq("habit_id", habit.id)
-        .eq("logged_for_date", todayKey)
-        .eq("completed", true)
-        .maybeSingle();
+    if (habitIds.length > 0) {
+      const [{ data: logs }, { data: existingNotifications }] = await Promise.all([
+        supabase
+          .from("habit_logs")
+          .select("habit_id")
+          .in("habit_id", habitIds)
+          .eq("logged_for_date", todayKey)
+          .eq("completed", true),
+        // related_item_id is a schedule_items FK, not usable for habits — dedupe
+        // by matching today's habit_skip notifications on the habit's name instead.
+        supabase
+          .from("notifications")
+          .select("body")
+          .eq("user_id", userId)
+          .eq("type", "habit_skip")
+          .gte("created_at", todayStart.toISOString()),
+      ]);
 
-      if (log) continue;
+      const loggedHabitIds = new Set((logs ?? []).map((l) => l.habit_id));
+      const alreadyNotifiedNames = new Set(
+        (existingNotifications ?? [])
+          .map((n) => /"([^"]+)"/.exec(n.body)?.[1])
+          .filter((name): name is string => Boolean(name)),
+      );
 
-      // related_item_id is a schedule_items FK, not usable for habits — dedupe
-      // by matching today's habit_skip notifications on the habit's name instead.
-      const { data: existingNotification } = await supabase
-        .from("notifications")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("type", "habit_skip")
-        .gte("created_at", todayStart.toISOString())
-        .ilike("body", `%"${habit.name}"%`)
-        .limit(1);
+      const toNotify = (habits ?? []).filter(
+        (habit) => !loggedHabitIds.has(habit.id) && !alreadyNotifiedNames.has(habit.name),
+      );
 
-      if (!existingNotification || existingNotification.length === 0) {
-        await supabase.from("notifications").insert({
-          user_id: userId,
-          type: "habit_skip",
-          title: "Don't break your streak",
-          body: `You haven't logged "${habit.name}" yet today.`,
-        });
+      if (toNotify.length > 0) {
+        await supabase.from("notifications").insert(
+          toNotify.map((habit) => ({
+            user_id: userId,
+            type: "habit_skip" as const,
+            title: "Don't break your streak",
+            body: `You haven't logged "${habit.name}" yet today.`,
+          })),
+        );
       }
     }
   }
