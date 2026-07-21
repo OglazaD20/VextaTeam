@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Tables } from "@/types/database";
 import {
   createScheduleItemSchema,
   updateScheduleItemSchema,
@@ -353,11 +354,12 @@ export async function getTaskDetails(id: string): Promise<
       storage_path: string;
       user_id: string;
     }[];
+    subtasks: Tables<"task_subtasks">[];
   }>
 > {
   const { supabase, user } = await requireUser();
 
-  const [{ data: tagLinks }, { data: attachments }] = await Promise.all([
+  const [{ data: tagLinks }, { data: attachments }, { data: subtasks }] = await Promise.all([
     supabase.from("schedule_item_tags").select("tag_id").eq("schedule_item_id", id),
     supabase
       .from("task_attachments")
@@ -365,6 +367,11 @@ export async function getTaskDetails(id: string): Promise<
       .eq("schedule_item_id", id)
       .eq("user_id", user.id)
       .order("created_at", { ascending: true }),
+    supabase
+      .from("task_subtasks")
+      .select("*")
+      .eq("schedule_item_id", id)
+      .order("sort_order", { ascending: true }),
   ]);
 
   const tagIds = (tagLinks ?? []).map((link) => link.tag_id);
@@ -374,7 +381,49 @@ export async function getTaskDetails(id: string): Promise<
     tags = (tagRows ?? []).map((t) => t.name);
   }
 
-  return { data: { tags, attachments: attachments ?? [] } };
+  return { data: { tags, attachments: attachments ?? [], subtasks: subtasks ?? [] } };
+}
+
+export async function addSubtask(itemId: string, title: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+
+  const { count } = await supabase
+    .from("task_subtasks")
+    .select("id", { count: "exact", head: true })
+    .eq("schedule_item_id", itemId);
+
+  const { error } = await supabase.from("task_subtasks").insert({
+    schedule_item_id: itemId,
+    title,
+    sort_order: count ?? 0,
+  });
+
+  if (error) return { error: error.message };
+  revalidateSchedule();
+  return {};
+}
+
+export async function toggleSubtask(id: string, isCompleted: boolean): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase
+    .from("task_subtasks")
+    .update({ is_completed: isCompleted })
+    .eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidateSchedule();
+  return {};
+}
+
+export async function deleteSubtask(id: string): Promise<ActionResult> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.from("task_subtasks").delete().eq("id", id);
+
+  if (error) return { error: error.message };
+  revalidateSchedule();
+  return {};
 }
 
 export async function getUserTags(): Promise<ActionResult<{ id: string; name: string; color: string }[]>> {

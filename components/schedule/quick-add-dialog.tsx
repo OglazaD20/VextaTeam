@@ -1,11 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { Loader2Icon, SparklesIcon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { createScheduleItem } from "@/app/(app)/today/actions";
+import { createScheduleItem, getUserTags } from "@/app/(app)/today/actions";
+import { TagInput } from "@/components/tasks/tag-input";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { CATEGORY_LABEL } from "@/lib/scheduling/category-style";
+import { cn } from "@/lib/utils";
 import { useUIStore } from "@/hooks/use-ui-store";
 
 const TYPE_OPTIONS = ["task", "meeting", "deadline", "appointment", "break"] as const;
@@ -57,8 +64,12 @@ interface ParsedResponse {
     title: string;
     type: ItemType;
     estimatedDurationMinutes: number | null;
+    scheduledStart: string | null;
     dueAt: string | null;
     priority: number;
+    category: string | null;
+    tags: string[];
+    location: string | null;
   };
   error?: string;
 }
@@ -69,19 +80,34 @@ export function QuickAddDialog() {
   const [isPending, startTransition] = React.useTransition();
   const [isParsing, setIsParsing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const formRef = React.useRef<HTMLFormElement>(null);
+  const [isAdvancedOpen, setAdvancedOpen] = React.useState(false);
+  const [allTags, setAllTags] = React.useState<string[]>([]);
+  const [wasOpen, setWasOpen] = React.useState(isOpen);
 
   const [smartText, setSmartText] = React.useState("");
   const [title, setTitle] = React.useState("");
   const [type, setType] = React.useState<ItemType>("task");
   const [priority, setPriority] = React.useState("3");
+  const [category, setCategory] = React.useState("");
+  const [location, setLocation] = React.useState("");
+  const [tags, setTags] = React.useState<string[]>([]);
   const [aiSchedule, setAiSchedule] = React.useState(false);
+  const [isFixed, setIsFixed] = React.useState(false);
   const [durationMinutes, setDurationMinutes] = React.useState("30");
   const [dueDate, setDueDate] = React.useState("");
+  const [startLocal, setStartLocal] = React.useState("");
 
-  // Recomputed on every render so reopening the dialog defaults to "now",
-  // not a stale time from when it was first mounted.
-  const defaultStart = toLocalInputValue(roundToNextQuarterHour(new Date()));
+  // Fetch the user's tags and reset to defaults whenever the dialog opens,
+  // without an effect (React's recommended pattern for syncing from props).
+  if (isOpen && !wasOpen) {
+    setWasOpen(true);
+    setStartLocal(toLocalInputValue(roundToNextQuarterHour(new Date())));
+    void getUserTags().then((result) => {
+      if (result.data) setAllTags(result.data.map((t) => t.name));
+    });
+  } else if (!isOpen && wasOpen) {
+    setWasOpen(false);
+  }
 
   async function handleParse() {
     if (!smartText.trim()) return;
@@ -99,16 +125,29 @@ export function QuickAddDialog() {
         return;
       }
 
-      setTitle(result.data.title);
-      setType(result.data.type);
-      setPriority(String(result.data.priority));
-      if (result.data.estimatedDurationMinutes) {
-        setDurationMinutes(String(result.data.estimatedDurationMinutes));
+      const data = result.data;
+      setTitle(data.title);
+      setType(data.type);
+      setPriority(String(data.priority));
+      if (data.estimatedDurationMinutes) {
+        setDurationMinutes(String(data.estimatedDurationMinutes));
       }
-      if (result.data.dueAt) {
+
+      if (data.scheduledStart) {
+        setAiSchedule(false);
+        setStartLocal(toLocalInputValue(new Date(data.scheduledStart)));
+      } else if (data.dueAt) {
         setAiSchedule(true);
-        setDueDate(result.data.dueAt.slice(0, 10));
+        setDueDate(data.dueAt.slice(0, 10));
       }
+
+      if (data.category) setCategory(data.category);
+      if (data.tags.length > 0) setTags((current) => [...new Set([...current, ...data.tags])]);
+      if (data.location) setLocation(data.location);
+      if (data.category || data.tags.length > 0 || data.location || data.dueAt) {
+        setAdvancedOpen(true);
+      }
+
       toast.success("Parsed — check the details below");
     } catch {
       toast.error("Couldn't reach the AI parser");
@@ -117,25 +156,37 @@ export function QuickAddDialog() {
     }
   }
 
+  function resetForm() {
+    setSmartText("");
+    setTitle("");
+    setType("task");
+    setPriority("3");
+    setCategory("");
+    setLocation("");
+    setTags([]);
+    setAiSchedule(false);
+    setIsFixed(false);
+    setDurationMinutes("30");
+    setDueDate("");
+    setAdvancedOpen(false);
+  }
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    const form = event.currentTarget;
-    const data = new FormData(form);
     const payload = new FormData();
-
     payload.set("title", title);
     payload.set("type", type);
     payload.set("priority", priority);
-    payload.set("location", (data.get("location") as string) ?? "");
-    payload.set("isFixed", data.get("isFixed") === "on" ? "true" : "false");
+    payload.set("location", location);
+    payload.set("isFixed", isFixed ? "true" : "false");
+    payload.set("tagNames", JSON.stringify(tags));
 
     if (aiSchedule) {
       if (durationMinutes) payload.set("estimatedDurationMinutes", durationMinutes);
       if (dueDate) payload.set("dueAt", new Date(`${dueDate}T23:59:59`).toISOString());
     } else {
-      const startLocal = data.get("scheduledStartLocal") as string;
       const duration = Number(durationMinutes);
       const start = new Date(startLocal);
       const end = new Date(start.getTime() + duration * 60_000);
@@ -152,14 +203,7 @@ export function QuickAddDialog() {
         return;
       }
       toast.success(aiSchedule ? "Added — AI will place it when you plan your day" : "Added to your day");
-      form.reset();
-      setSmartText("");
-      setTitle("");
-      setType("task");
-      setPriority("3");
-      setAiSchedule(false);
-      setDurationMinutes("30");
-      setDueDate("");
+      resetForm();
       setOpen(false);
     });
   }
@@ -170,7 +214,7 @@ export function QuickAddDialog() {
         <DialogHeader>
           <DialogTitle>Add to today</DialogTitle>
           <DialogDescription>
-            Describe it in plain language, or fill in the details yourself.
+            Title, time, done — everything else is optional.
           </DialogDescription>
         </DialogHeader>
 
@@ -178,7 +222,7 @@ export function QuickAddDialog() {
           <Input
             value={smartText}
             onChange={(e) => setSmartText(e.target.value)}
-            placeholder="Finish the deck, ~2h, before Friday"
+            placeholder="Gym tomorrow 18:00, or dinner Friday 20:00"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -192,74 +236,25 @@ export function QuickAddDialog() {
           </Button>
         </div>
 
-        <form
-          ref={formRef}
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="qa-title">Title</Label>
             <Input
-              id="title"
-              name="title"
-              placeholder="Finish deck"
+              id="qa-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="Finish deck"
               required
+              autoFocus
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="type">Type</Label>
-              <Select value={type} onValueChange={(value) => setType(value as ItemType)}>
-                <SelectTrigger id="type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {CATEGORY_LABEL[option]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger id="priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
-            <div>
-              <p className="text-sm font-medium">Let AI find the time</p>
-              <p className="text-xs text-muted-foreground">
-                Adds it unscheduled — placed automatically next time you plan
-                your day.
-              </p>
-            </div>
-            <Switch checked={aiSchedule} onCheckedChange={setAiSchedule} />
           </div>
 
           {aiSchedule ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="durationMinutes">Duration (min, optional)</Label>
+                <Label htmlFor="qa-duration">Duration (min, optional)</Label>
                 <Input
-                  id="durationMinutes"
+                  id="qa-duration"
                   type="number"
                   min={5}
                   step={5}
@@ -269,9 +264,9 @@ export function QuickAddDialog() {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="dueDate">Due date (optional)</Label>
+                <Label htmlFor="qa-due">Due date (optional)</Label>
                 <Input
-                  id="dueDate"
+                  id="qa-due"
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
@@ -281,19 +276,19 @@ export function QuickAddDialog() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="scheduledStartLocal">Starts</Label>
+                <Label htmlFor="qa-start">Time</Label>
                 <Input
-                  id="scheduledStartLocal"
-                  name="scheduledStartLocal"
+                  id="qa-start"
                   type="datetime-local"
-                  defaultValue={defaultStart}
+                  value={startLocal}
+                  onChange={(e) => setStartLocal(e.target.value)}
                   required
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="durationMinutes">Duration (min)</Label>
+                <Label htmlFor="qa-duration2">Duration (min, optional)</Label>
                 <Input
-                  id="durationMinutes"
+                  id="qa-duration2"
                   type="number"
                   min={5}
                   step={5}
@@ -305,22 +300,102 @@ export function QuickAddDialog() {
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="location">Location (optional)</Label>
-            <Input id="location" name="location" placeholder="Zoom, office, gym…" />
-          </div>
+          <Collapsible open={isAdvancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Advanced settings
+                <ChevronDownIcon
+                  className={cn("size-3.5 transition-transform", isAdvancedOpen && "rotate-180")}
+                />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex flex-col gap-4 pt-4">
+                <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium">Let AI find the time</p>
+                    <p className="text-xs text-muted-foreground">
+                      Adds it unscheduled — placed automatically next time you plan your day.
+                    </p>
+                  </div>
+                  <Switch checked={aiSchedule} onCheckedChange={setAiSchedule} />
+                </div>
 
-          {!aiSchedule && (
-            <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
-              <div>
-                <p className="text-sm font-medium">Fixed time</p>
-                <p className="text-xs text-muted-foreground">
-                  Won&apos;t be moved when you plan your day.
-                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="qa-type">Type</Label>
+                    <Select value={type} onValueChange={(value) => setType(value as ItemType)}>
+                      <SelectTrigger id="qa-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {CATEGORY_LABEL[option]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="qa-priority">Priority</Label>
+                    <Select value={priority} onValueChange={setPriority}>
+                      <SelectTrigger id="qa-priority">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="qa-category">Category</Label>
+                  <Input
+                    id="qa-category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="Work, Health, Personal…"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Tags</Label>
+                  <TagInput value={tags} onChange={setTags} suggestions={allTags} />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="qa-location">Location (optional)</Label>
+                  <Input
+                    id="qa-location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Zoom, office, gym…"
+                  />
+                </div>
+
+                {!aiSchedule && (
+                  <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium">Fixed time</p>
+                      <p className="text-xs text-muted-foreground">
+                        Won&apos;t be moved when you plan your day.
+                      </p>
+                    </div>
+                    <Switch checked={isFixed} onCheckedChange={setIsFixed} />
+                  </div>
+                )}
               </div>
-              <Switch name="isFixed" />
-            </div>
-          )}
+            </CollapsibleContent>
+          </Collapsible>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 

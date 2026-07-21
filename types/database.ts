@@ -495,6 +495,22 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["activity_suggestions"]["Row"]>;
         Relationships: [];
       };
+      task_subtasks: {
+        Row: {
+          id: string;
+          schedule_item_id: string;
+          title: string;
+          is_completed: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["task_subtasks"]["Row"]> & {
+          schedule_item_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_subtasks"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

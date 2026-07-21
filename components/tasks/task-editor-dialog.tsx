@@ -1,14 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { Loader2Icon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { createScheduleItem, getTaskDetails, updateScheduleItem } from "@/app/(app)/today/actions";
 import { AttachmentList } from "@/components/tasks/attachment-list";
 import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
+import { SubtaskList } from "@/components/tasks/subtask-list";
 import { TagInput } from "@/components/tasks/tag-input";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +35,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CATEGORY_LABEL } from "@/lib/scheduling/category-style";
+import { cn } from "@/lib/utils";
 import type { RecurrenceRule, Tables } from "@/types/database";
 
 const TYPE_OPTIONS = ["task", "meeting", "deadline", "appointment", "break"] as const;
@@ -40,6 +47,21 @@ const PRIORITY_OPTIONS = [
   { value: "5", label: "5 — Someday" },
 ];
 const CATEGORY_PRESETS = ["Work", "Personal", "Health", "Finance", "Learning", "Errands", "Social"];
+
+interface ParsedResponse {
+  data?: {
+    title: string;
+    type: (typeof TYPE_OPTIONS)[number];
+    estimatedDurationMinutes: number | null;
+    scheduledStart: string | null;
+    dueAt: string | null;
+    priority: number;
+    category: string | null;
+    tags: string[];
+    location: string | null;
+  };
+  error?: string;
+}
 
 function toLocalInputValue(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -75,6 +97,10 @@ export function TaskEditorDialog({
   const [isPending, startTransition] = React.useTransition();
   const [isLoadingDetails, setIsLoadingDetails] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [isAdvancedOpen, setAdvancedOpen] = React.useState(false);
+
+  const [smartText, setSmartText] = React.useState("");
+  const [isParsing, setIsParsing] = React.useState(false);
 
   const [title, setTitle] = React.useState("");
   const [type, setType] = React.useState<(typeof TYPE_OPTIONS)[number]>("task");
@@ -90,8 +116,10 @@ export function TaskEditorDialog({
   const [dueDate, setDueDate] = React.useState("");
   const [recurrenceRule, setRecurrenceRule] = React.useState<RecurrenceRule | null>(null);
   const [attachments, setAttachments] = React.useState<Tables<"task_attachments">[]>([]);
+  const [subtasks, setSubtasks] = React.useState<Tables<"task_subtasks">[]>([]);
 
   const resetForCreate = React.useCallback(() => {
+    setSmartText("");
     setTitle("");
     setType("task");
     setPriority("3");
@@ -109,6 +137,8 @@ export function TaskEditorDialog({
     setDueDate("");
     setRecurrenceRule(null);
     setAttachments([]);
+    setSubtasks([]);
+    setAdvancedOpen(false);
   }, [defaultDate]);
 
   const loadTaskDetails = React.useCallback(async (task: Tables<"schedule_items">) => {
@@ -130,12 +160,23 @@ export function TaskEditorDialog({
       setAiSchedule(true);
     }
 
+    setAdvancedOpen(
+      task.type !== "task" ||
+        task.priority !== 3 ||
+        !!task.category ||
+        !!task.location ||
+        !!task.notes ||
+        !!task.recurrence_rule ||
+        task.is_fixed,
+    );
+
     setIsLoadingDetails(true);
     const result = await getTaskDetails(task.id);
     setIsLoadingDetails(false);
     if (result.data) {
       setTags(result.data.tags);
       setAttachments(result.data.attachments as Tables<"task_attachments">[]);
+      setSubtasks(result.data.subtasks);
     }
   }, []);
 
@@ -155,6 +196,60 @@ export function TaskEditorDialog({
     if (!item) return;
     const result = await getTaskDetails(item.id);
     if (result.data) setAttachments(result.data.attachments as Tables<"task_attachments">[]);
+  }
+
+  async function refreshSubtasks() {
+    if (!item) return;
+    const result = await getTaskDetails(item.id);
+    if (result.data) setSubtasks(result.data.subtasks);
+  }
+
+  async function handleParse() {
+    if (!smartText.trim()) return;
+    setIsParsing(true);
+    try {
+      const response = await fetch("/api/ai/parse-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: smartText }),
+      });
+      const result: ParsedResponse = await response.json();
+
+      if (!response.ok || result.error || !result.data) {
+        toast.error("Couldn't parse that", { description: result.error });
+        return;
+      }
+
+      const data = result.data;
+      setTitle(data.title);
+      setType(data.type);
+      setPriority(String(data.priority));
+      if (data.estimatedDurationMinutes) {
+        setDurationMinutes(String(data.estimatedDurationMinutes));
+      }
+
+      if (data.scheduledStart) {
+        setAiSchedule(false);
+        setStartLocal(toLocalInputValue(new Date(data.scheduledStart)));
+      } else if (data.dueAt) {
+        setAiSchedule(true);
+        setDueDate(data.dueAt.slice(0, 10));
+      }
+
+      if (data.category) setCategory(data.category);
+      if (data.tags.length > 0) setTags((current) => [...new Set([...current, ...data.tags])]);
+      if (data.location) setLocation(data.location);
+
+      if (data.category || data.tags.length > 0 || data.location || data.dueAt) {
+        setAdvancedOpen(true);
+      }
+
+      toast.success("Parsed — check the details below");
+    } catch {
+      toast.error("Couldn't reach the AI parser");
+    } finally {
+      setIsParsing(false);
+    }
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -208,9 +303,31 @@ export function TaskEditorDialog({
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit task" : "New task"}</DialogTitle>
           <DialogDescription>
-            {isEditMode ? "Update the details below." : "Fill in as much or as little as you like."}
+            {isEditMode
+              ? "Update the details below."
+              : "Title, time, done — everything else is optional."}
           </DialogDescription>
         </DialogHeader>
+
+        {!isEditMode && (
+          <div className="flex gap-2">
+            <Input
+              value={smartText}
+              onChange={(e) => setSmartText(e.target.value)}
+              placeholder="Gym tomorrow 18:00, or dinner Friday 20:00"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleParse();
+                }
+              }}
+            />
+            <Button type="button" variant="outline" onClick={handleParse} disabled={isParsing}>
+              {isParsing ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
+              Parse
+            </Button>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -223,70 +340,6 @@ export function TaskEditorDialog({
               required
               autoFocus
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="te-type">Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
-                <SelectTrigger id="te-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {CATEGORY_LABEL[option]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="te-priority">Priority</Label>
-              <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger id="te-priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITY_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="te-category">Category</Label>
-            <Input
-              id="te-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="Work, Health, Personal…"
-              list="te-category-presets"
-            />
-            <datalist id="te-category-presets">
-              {CATEGORY_PRESETS.map((preset) => (
-                <option key={preset} value={preset} />
-              ))}
-            </datalist>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>Tags</Label>
-            <TagInput value={tags} onChange={setTags} suggestions={allTags} />
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
-            <div>
-              <p className="text-sm font-medium">Let AI find the time</p>
-              <p className="text-xs text-muted-foreground">
-                Placed automatically next time you plan your day.
-              </p>
-            </div>
-            <Switch checked={aiSchedule} onCheckedChange={setAiSchedule} />
           </div>
 
           {aiSchedule ? (
@@ -313,82 +366,190 @@ export function TaskEditorDialog({
               </div>
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="te-start">Starts</Label>
-                  <Input
-                    id="te-start"
-                    type="datetime-local"
-                    value={startLocal}
-                    onChange={(e) => setStartLocal(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="te-duration2">Duration (min)</Label>
-                  <Input
-                    id="te-duration2"
-                    type="number"
-                    min={5}
-                    step={5}
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              <RecurrencePicker value={recurrenceRule} onChange={setRecurrenceRule} />
-            </>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="te-location">Location (optional)</Label>
-            <Input
-              id="te-location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Zoom, office, gym…"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="te-notes">Notes</Label>
-            <Textarea
-              id="te-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anything else worth remembering…"
-              rows={3}
-            />
-          </div>
-
-          {!aiSchedule && (
-            <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
-              <div>
-                <p className="text-sm font-medium">Fixed time</p>
-                <p className="text-xs text-muted-foreground">
-                  Won&apos;t be moved when you plan your day.
-                </p>
-              </div>
-              <Switch checked={isFixed} onCheckedChange={setIsFixed} />
-            </div>
-          )}
-
-          {isEditMode && (
-            <div className="flex flex-col gap-1.5">
-              <Label>Attachments</Label>
-              {isLoadingDetails ? (
-                <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
-              ) : (
-                <AttachmentList
-                  itemId={item!.id}
-                  attachments={attachments}
-                  onChanged={refreshAttachments}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="te-start">Time</Label>
+                <Input
+                  id="te-start"
+                  type="datetime-local"
+                  value={startLocal}
+                  onChange={(e) => setStartLocal(e.target.value)}
+                  required
                 />
-              )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="te-duration2">Duration (min, optional)</Label>
+                <Input
+                  id="te-duration2"
+                  type="number"
+                  min={5}
+                  step={5}
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  required
+                />
+              </div>
             </div>
           )}
+
+          <Collapsible open={isAdvancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Advanced settings
+                <ChevronDownIcon
+                  className={cn("size-3.5 transition-transform", isAdvancedOpen && "rotate-180")}
+                />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex flex-col gap-4 pt-4">
+                <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium">Let AI find the time</p>
+                    <p className="text-xs text-muted-foreground">
+                      Placed automatically next time you plan your day.
+                    </p>
+                  </div>
+                  <Switch checked={aiSchedule} onCheckedChange={setAiSchedule} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="te-type">Type</Label>
+                    <Select value={type} onValueChange={(v) => setType(v as typeof type)}>
+                      <SelectTrigger id="te-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {CATEGORY_LABEL[option]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="te-priority">Priority</Label>
+                    <Select value={priority} onValueChange={setPriority}>
+                      <SelectTrigger id="te-priority">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="te-category">Category</Label>
+                  <Input
+                    id="te-category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="Work, Health, Personal…"
+                    list="te-category-presets"
+                  />
+                  <datalist id="te-category-presets">
+                    {CATEGORY_PRESETS.map((preset) => (
+                      <option key={preset} value={preset} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Tags</Label>
+                  <TagInput value={tags} onChange={setTags} suggestions={allTags} />
+                </div>
+
+                {!aiSchedule && (
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="te-due2">Due date (optional)</Label>
+                      <Input
+                        id="te-due2"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                      />
+                    </div>
+                    <RecurrencePicker value={recurrenceRule} onChange={setRecurrenceRule} />
+                  </>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="te-location">Location (optional)</Label>
+                  <Input
+                    id="te-location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Zoom, office, gym…"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="te-notes">Notes</Label>
+                  <Textarea
+                    id="te-notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Anything else worth remembering…"
+                    rows={3}
+                  />
+                </div>
+
+                {!aiSchedule && (
+                  <div className="flex items-center justify-between rounded-xl border border-border px-3.5 py-2.5">
+                    <div>
+                      <p className="text-sm font-medium">Fixed time</p>
+                      <p className="text-xs text-muted-foreground">
+                        Won&apos;t be moved when you plan your day.
+                      </p>
+                    </div>
+                    <Switch checked={isFixed} onCheckedChange={setIsFixed} />
+                  </div>
+                )}
+
+                {isEditMode && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Subtasks</Label>
+                    {isLoadingDetails ? (
+                      <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <SubtaskList
+                        itemId={item!.id}
+                        subtasks={subtasks}
+                        onChanged={refreshSubtasks}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {isEditMode && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label>Attachments</Label>
+                    {isLoadingDetails ? (
+                      <Loader2Icon className="size-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <AttachmentList
+                        itemId={item!.id}
+                        attachments={attachments}
+                        onChanged={refreshAttachments}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
