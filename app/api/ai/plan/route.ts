@@ -2,8 +2,15 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { fromZonedTime } from "date-fns-tz";
 
+import { getCurrentWeather, type WeatherSnapshot } from "@/lib/activities/weather-client";
 import { estimateDurations } from "@/lib/ai/estimate-durations";
+import { generatePlanReasoning } from "@/lib/ai/generate-plan-reasoning";
 import { getWakingWindowUtc } from "@/lib/scheduling/day-range";
+import {
+  computePlacementFacts,
+  notablePlacementFacts,
+  type Chronotype,
+} from "@/lib/scheduling/reasoning";
 import { solveSchedule } from "@/lib/scheduling/solver";
 import type { FixedInterval, FlexibleItem } from "@/lib/scheduling/types";
 import { createClient } from "@/lib/supabase/server";
@@ -25,7 +32,7 @@ export async function POST(request: Request) {
     supabase.from("profiles").select("timezone").eq("id", user.id).single(),
     supabase
       .from("user_settings")
-      .select("wake_time, sleep_time, default_task_buffer_minutes")
+      .select("wake_time, sleep_time, default_task_buffer_minutes, chronotype, default_lat, default_lng")
       .eq("user_id", user.id)
       .single(),
   ]);
@@ -47,7 +54,7 @@ export async function POST(request: Request) {
     await Promise.all([
       supabase
         .from("schedule_items")
-        .select("id, scheduled_start, scheduled_end")
+        .select("id, title, scheduled_start, scheduled_end")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .not("scheduled_start", "is", null)
@@ -56,7 +63,7 @@ export async function POST(request: Request) {
         .lte("scheduled_start", dayWindow.end.toISOString()),
       supabase
         .from("schedule_items")
-        .select("id, title, type, priority, estimated_duration_minutes, due_at")
+        .select("id, title, type, priority, estimated_duration_minutes, due_at, habit_id")
         .eq("user_id", user.id)
         .is("deleted_at", null)
         .is("scheduled_start", null)
@@ -99,8 +106,9 @@ export async function POST(request: Request) {
     dueAt: row.due_at ? new Date(row.due_at) : undefined,
   }));
 
-  const fixed: FixedInterval[] = (fixedRows ?? []).map((row) => ({
+  const fixed: (FixedInterval & { title: string })[] = (fixedRows ?? []).map((row) => ({
     id: row.id,
+    title: row.title,
     start: new Date(row.scheduled_start!),
     end: new Date(row.scheduled_end!),
   }));
@@ -112,10 +120,62 @@ export async function POST(request: Request) {
     bufferMinutes: settings?.default_task_buffer_minutes ?? 10,
   });
 
+  // Habit preferred-times, for "kept at your usual time" style reasoning.
+  const habitIds = [...new Set(flexRows.map((r) => r.habit_id).filter((id): id is string => !!id))];
+  const habitPreferredTimeById = new Map<string, string | null>();
+  if (habitIds.length > 0) {
+    const { data: habits } = await supabase
+      .from("habits")
+      .select("id, preferred_time")
+      .in("id", habitIds);
+    for (const h of habits ?? []) habitPreferredTimeById.set(h.id, h.preferred_time);
+  }
+
+  const itemsById = new Map(
+    flexRows.map((row) => [
+      row.id,
+      {
+        id: row.id,
+        title: row.title,
+        habitPreferredTime: row.habit_id ? habitPreferredTimeById.get(row.habit_id) : null,
+      },
+    ]),
+  );
+
+  const chronotype = (settings?.chronotype ?? "flexible") as Chronotype;
+  const facts = computePlacementFacts(result.placements, fixed, itemsById, chronotype, timeZone);
+  const notableFacts = notablePlacementFacts(facts);
+
+  const bumpedTitles = result.unscheduled
+    .map((id) => flexRows.find((r) => r.id === id)?.title)
+    .filter((t): t is string => !!t);
+
+  let weather: WeatherSnapshot | null = null;
+  if (settings?.default_lat != null && settings?.default_lng != null) {
+    try {
+      weather = await getCurrentWeather({ lat: settings.default_lat, lng: settings.default_lng });
+    } catch {
+      // Weather is a nice-to-have for reasoning — plan generation shouldn't fail without it.
+    }
+  }
+
+  let reasoningById = new Map<string, string>();
+  let daySummary = "";
+  if (notableFacts.length > 0 || bumpedTitles.length > 0) {
+    try {
+      const reasoning = await generatePlanReasoning({ notableFacts, bumpedTitles, weather });
+      reasoningById = new Map(reasoning.itemReasoning.map((r) => [r.id, r.reasoning]));
+      daySummary = reasoning.daySummary;
+    } catch {
+      // Reasoning is an explanation layer — a failure here shouldn't block scheduling.
+    }
+  }
+
   await Promise.all(
     result.placements.map((placement) => {
       const flexItem = flexible.find((item) => item.id === placement.id);
       const estimate = estimateMap.get(placement.id);
+      const reasoning = reasoningById.get(placement.id) ?? estimate?.reasoning ?? null;
 
       return supabase
         .from("schedule_items")
@@ -123,7 +183,7 @@ export async function POST(request: Request) {
           scheduled_start: placement.start.toISOString(),
           scheduled_end: placement.end.toISOString(),
           estimated_duration_minutes: flexItem?.durationMinutes,
-          ai_reasoning: estimate?.reasoning ?? null,
+          ai_reasoning: reasoning,
           source: "ai_suggested",
         })
         .eq("id", placement.id)
@@ -137,5 +197,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     scheduled: result.placements.length,
     unscheduled: result.unscheduled.length,
+    daySummary: daySummary || undefined,
   });
 }

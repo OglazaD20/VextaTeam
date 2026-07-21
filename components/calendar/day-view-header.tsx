@@ -12,6 +12,7 @@ import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
 interface PlanResponse {
   scheduled?: number;
   unscheduled?: number;
+  daySummary?: string;
   error?: string;
 }
 
@@ -56,13 +57,17 @@ export function DayViewHeader({
         return;
       }
 
+      const description =
+        result.daySummary ||
+        (result.unscheduled
+          ? `${result.unscheduled} item(s) didn't fit and stayed unscheduled.`
+          : undefined);
+
       toast.success(
         result.scheduled
           ? `Scheduled ${result.scheduled} item${result.scheduled === 1 ? "" : "s"}`
           : "Nothing fit that day",
-        result.unscheduled
-          ? { description: `${result.unscheduled} item(s) didn't fit and stayed unscheduled.` }
-          : undefined,
+        description ? { description } : undefined,
       );
       router.refresh();
     } catch {

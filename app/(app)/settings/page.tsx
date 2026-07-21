@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CalendarConnections } from "@/components/settings/calendar-connections";
+import { PreferencesForm } from "@/components/settings/preferences-form";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Settings — LifeFlow" };
@@ -20,9 +21,12 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: connections } = user
-    ? await supabase.from("calendar_connections").select("*").eq("user_id", user.id)
-    : { data: [] };
+  const [{ data: connections }, { data: settings }] = user
+    ? await Promise.all([
+        supabase.from("calendar_connections").select("*").eq("user_id", user.id),
+        supabase.from("user_settings").select("*").eq("user_id", user.id).single(),
+      ])
+    : [{ data: [] }, { data: null }];
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
@@ -70,8 +74,17 @@ export default async function SettingsPage() {
             Working hours, chronotype, and notification preferences.
           </CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Preference controls arrive once onboarding is built.
+        <CardContent>
+          <PreferencesForm
+            wakeTime={settings?.wake_time ?? "07:00"}
+            sleepTime={settings?.sleep_time ?? "23:00"}
+            chronotype={settings?.chronotype ?? "flexible"}
+            defaultTaskBufferMinutes={settings?.default_task_buffer_minutes ?? 10}
+            focusBlockMinutes={settings?.focus_block_minutes ?? 50}
+            breakMinutes={settings?.break_minutes ?? 10}
+            lat={settings?.default_lat ?? null}
+            lng={settings?.default_lng ?? null}
+          />
         </CardContent>
       </Card>
     </div>

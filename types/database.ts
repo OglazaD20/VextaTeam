@@ -91,6 +91,8 @@ export interface Database {
           break_minutes: number;
           theme: Theme;
           notification_prefs: Record<string, boolean>;
+          default_lat: number | null;
+          default_lng: number | null;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["user_settings"]["Row"]> & {
