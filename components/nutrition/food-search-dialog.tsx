@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
+import { Loader2Icon, PlusIcon, SearchIcon, StarIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { logFood } from "@/app/(app)/nutrition/actions";
+import { getFavoriteFoods, getRecentFoods, logFood, toggleFavoriteFood } from "@/app/(app)/nutrition/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { MealType } from "@/types/database";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import type { MealType, Tables } from "@/types/database";
 
 interface FoodResult {
   id: string;
@@ -26,12 +28,47 @@ interface FoodResult {
   fat_g: number;
   carbs_g: number;
   fiber_g: number;
+  sugar_g: number;
+  sodium_mg: number;
   serving_size: number;
   serving_unit: string;
 }
 
+function FoodResultRow({
+  food,
+  isFavorite,
+  onSelect,
+  onToggleFavorite,
+}: {
+  food: FoodResult;
+  isFavorite: boolean;
+  onSelect: () => void;
+  onToggleFavorite: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-xl border border-border px-1 hover:bg-accent">
+      <button type="button" onClick={onSelect} className="flex-1 py-2 pl-2 text-left text-sm">
+        <span className="block font-medium">{food.name}</span>
+        <span className="block text-xs text-muted-foreground">
+          {food.brand ? `${food.brand} · ` : ""}
+          {Math.round(food.calories)} cal per {food.serving_size} {food.serving_unit}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onToggleFavorite}
+        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+        className="p-2 text-muted-foreground hover:text-foreground"
+      >
+        <StarIcon className={cn("size-4", isFavorite && "fill-warning text-warning")} />
+      </button>
+    </div>
+  );
+}
+
 export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
   const [isOpen, setOpen] = React.useState(false);
+  const [tab, setTab] = React.useState<"search" | "favorites" | "recent">("search");
   const [query, setQuery] = React.useState("");
   const [isSearching, setIsSearching] = React.useState(false);
   const [results, setResults] = React.useState<FoodResult[]>([]);
@@ -39,6 +76,22 @@ export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
   const [selected, setSelected] = React.useState<FoodResult | null>(null);
   const [quantity, setQuantity] = React.useState("1");
   const [isPending, startTransition] = React.useTransition();
+
+  const [favorites, setFavorites] = React.useState<Tables<"foods">[]>([]);
+  const [recent, setRecent] = React.useState<Tables<"foods">[]>([]);
+  const [wasOpen, setWasOpen] = React.useState(isOpen);
+
+  const favoriteIds = React.useMemo(() => new Set(favorites.map((f) => f.id)), [favorites]);
+
+  // Load favorites/recent whenever the dialog opens, without an effect
+  // (React's recommended pattern for syncing from props/state changes).
+  if (isOpen && !wasOpen) {
+    setWasOpen(true);
+    void getFavoriteFoods().then((r) => r.data && setFavorites(r.data));
+    void getRecentFoods().then((r) => r.data && setRecent(r.data));
+  } else if (!isOpen && wasOpen) {
+    setWasOpen(false);
+  }
 
   React.useEffect(() => {
     if (query.trim().length < 2) {
@@ -76,6 +129,17 @@ export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
     setSelected(null);
     setQuantity("1");
     setSearchError(null);
+    setTab("search");
+  }
+
+  async function handleToggleFavorite(foodId: string) {
+    const result = await toggleFavoriteFood(foodId);
+    if (result.error) {
+      toast.error("Couldn't update favorites", { description: result.error });
+      return;
+    }
+    const r = await getFavoriteFoods();
+    if (r.data) setFavorites(r.data);
   }
 
   function handleLog() {
@@ -90,6 +154,8 @@ export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
     formData.set("baseFatG", String(selected.fat_g));
     formData.set("baseCarbsG", String(selected.carbs_g));
     formData.set("baseFiberG", String(selected.fiber_g));
+    formData.set("baseSugarG", String(selected.sugar_g));
+    formData.set("baseSodiumMg", String(selected.sodium_mg));
 
     startTransition(async () => {
       const result = await logFood(formData);
@@ -120,43 +186,82 @@ export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
         </DialogHeader>
 
         {!selected ? (
-          <div className="flex flex-col gap-3">
-            <div className="relative">
-              <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                autoFocus
-                placeholder="Search foods…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-9"
-              />
-              {isSearching && (
-                <Loader2Icon className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-              )}
-            </div>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+            <TabsList className="w-full">
+              <TabsTrigger value="search">Search</TabsTrigger>
+              <TabsTrigger value="favorites">Favorites</TabsTrigger>
+              <TabsTrigger value="recent">Recent</TabsTrigger>
+            </TabsList>
 
-            {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+            <TabsContent value="search" className="flex flex-col gap-3">
+              <div className="relative">
+                <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  autoFocus
+                  placeholder="Search foods…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-9"
+                />
+                {isSearching && (
+                  <Loader2Icon className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
 
-            <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-              {results.map((food) => (
-                <button
-                  key={food.id}
-                  type="button"
-                  onClick={() => setSelected(food)}
-                  className="flex flex-col items-start gap-0.5 rounded-xl border border-border px-3 py-2 text-left text-sm hover:bg-accent"
-                >
-                  <span className="font-medium">{food.name}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {food.brand ? `${food.brand} · ` : ""}
-                    {Math.round(food.calories)} cal per {food.serving_size} {food.serving_unit}
-                  </span>
-                </button>
-              ))}
-              {!isSearching && query.trim().length >= 2 && results.length === 0 && !searchError && (
-                <p className="px-1 text-sm text-muted-foreground">No matches found.</p>
+              {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+
+              <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+                {results.map((food) => (
+                  <FoodResultRow
+                    key={food.id}
+                    food={food}
+                    isFavorite={favoriteIds.has(food.id)}
+                    onSelect={() => setSelected(food)}
+                    onToggleFavorite={() => handleToggleFavorite(food.id)}
+                  />
+                ))}
+                {!isSearching && query.trim().length >= 2 && results.length === 0 && !searchError && (
+                  <p className="px-1 text-sm text-muted-foreground">No matches found.</p>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="favorites" className="flex max-h-80 flex-col gap-1 overflow-y-auto">
+              {favorites.length === 0 ? (
+                <p className="px-1 text-sm text-muted-foreground">
+                  Star a food from search to save it here.
+                </p>
+              ) : (
+                favorites.map((food) => (
+                  <FoodResultRow
+                    key={food.id}
+                    food={food}
+                    isFavorite
+                    onSelect={() => setSelected(food)}
+                    onToggleFavorite={() => handleToggleFavorite(food.id)}
+                  />
+                ))
               )}
-            </div>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="recent" className="flex max-h-80 flex-col gap-1 overflow-y-auto">
+              {recent.length === 0 ? (
+                <p className="px-1 text-sm text-muted-foreground">
+                  Foods you&apos;ve logged will show up here.
+                </p>
+              ) : (
+                recent.map((food) => (
+                  <FoodResultRow
+                    key={food.id}
+                    food={food}
+                    isFavorite={favoriteIds.has(food.id)}
+                    onSelect={() => setSelected(food)}
+                    onToggleFavorite={() => handleToggleFavorite(food.id)}
+                  />
+                ))
+              )}
+            </TabsContent>
+          </Tabs>
         ) : (
           <div className="flex flex-col gap-4">
             <div>
@@ -179,7 +284,7 @@ export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
               />
             </div>
             <Button variant="ghost" size="sm" className="self-start" onClick={() => setSelected(null)}>
-              ← Back to search
+              ← Back
             </Button>
           </div>
         )}

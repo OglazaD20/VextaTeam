@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
 import { subDays } from "date-fns";
 
+import { getMealTemplates, getUserRecipes } from "@/app/(app)/nutrition/actions";
+import { CreateCustomFoodDialog } from "@/components/nutrition/create-custom-food-dialog";
 import { GoalsDialog } from "@/components/nutrition/goals-dialog";
 import { MacroRing } from "@/components/nutrition/macro-ring";
 import { MealSection, type FoodLogEntry } from "@/components/nutrition/meal-section";
+import { MealTemplatesSection } from "@/components/nutrition/meal-templates-section";
+import { RecipesSection } from "@/components/nutrition/recipes-section";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { WeightChart, type WeightPoint } from "@/components/nutrition/weight-chart";
 import { WeightLogForm } from "@/components/nutrition/weight-log-form";
@@ -42,6 +46,8 @@ export default async function NutritionPage() {
     { data: waterLogs, error: waterLogsError },
     { data: settings },
     { data: bodyMetrics },
+    templatesResult,
+    recipesResult,
   ] = await Promise.all([
     supabase
       .from("food_logs")
@@ -63,6 +69,8 @@ export default async function NutritionPage() {
       .eq("user_id", user.id)
       .gte("logged_for_date", subDays(new Date(), 29).toISOString().slice(0, 10))
       .order("logged_for_date", { ascending: true }),
+    getMealTemplates(),
+    getUserRecipes(),
   ]);
 
   if (foodLogsError) throw new Error(`Failed to load food log: ${foodLogsError.message}`);
@@ -79,12 +87,15 @@ export default async function NutritionPage() {
   for (const log of foodLogs ?? []) {
     const entry: FoodLogEntry = {
       id: log.id,
+      foodId: log.food_id,
       name: log.food_id ? (namesByFoodId.get(log.food_id) ?? "Food") : "Food",
       calories: log.calories,
       proteinG: log.protein_g,
       fatG: log.fat_g,
       carbsG: log.carbs_g,
       quantity: log.quantity,
+      mealType: log.meal_type,
+      notes: log.notes,
     };
     if (!entriesByMeal.has(log.meal_type)) entriesByMeal.set(log.meal_type, []);
     entriesByMeal.get(log.meal_type)!.push(entry);
@@ -97,6 +108,8 @@ export default async function NutritionPage() {
       fatG: l.fat_g,
       carbsG: l.carbs_g,
       fiberG: l.fiber_g,
+      sugarG: l.sugar_g,
+      sodiumMg: l.sodium_mg,
     })),
   );
   const totalWaterMl = (waterLogs ?? []).reduce((sum, w) => sum + w.amount_ml, 0);
@@ -117,11 +130,14 @@ export default async function NutritionPage() {
           <h1 className="text-xl font-semibold tracking-tight">Nutrition</h1>
           <p className="text-sm text-muted-foreground">Today&apos;s food and water.</p>
         </div>
-        <GoalsDialog settings={settings ?? null} />
+        <div className="flex items-center gap-2">
+          <CreateCustomFoodDialog />
+          <GoalsDialog settings={settings ?? null} />
+        </div>
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="flex flex-col gap-3 pt-6">
           <MacroRing
             calories={totals.calories}
             calorieGoal={settings?.daily_calorie_goal ?? 2000}
@@ -132,6 +148,9 @@ export default async function NutritionPage() {
             fatG={totals.fatG}
             fatGoalG={settings?.fat_goal_g ?? 65}
           />
+          <p className="text-center text-xs text-muted-foreground">
+            {Math.round(totals.sugarG)}g sugar · {Math.round(totals.sodiumMg)}mg sodium
+          </p>
         </CardContent>
       </Card>
 
@@ -150,6 +169,9 @@ export default async function NutritionPage() {
           />
         ))}
       </div>
+
+      <MealTemplatesSection templates={templatesResult.data ?? []} />
+      <RecipesSection initialRecipes={recipesResult.data ?? []} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

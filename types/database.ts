@@ -43,7 +43,7 @@ export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimizatio
 export type RescheduleTrigger = "user" | "ai" | "system";
 export type Theme = "light" | "dark" | "system";
 export type Chronotype = "early_bird" | "night_owl" | "flexible";
-export type FoodSource = "usda" | "custom";
+export type FoodSource = "usda" | "custom" | "recipe";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "drink";
 
 export interface RecurrenceRule {
@@ -388,8 +388,12 @@ export interface Database {
           fat_g: number;
           carbs_g: number;
           fiber_g: number;
+          sugar_g: number;
+          sodium_mg: number;
           serving_size: number;
           serving_unit: string;
+          weight_g: number | null;
+          default_meal_type: MealType | null;
           source: FoodSource;
           external_id: string | null;
           created_by: string | null;
@@ -415,6 +419,8 @@ export interface Database {
           fat_g: number;
           carbs_g: number;
           fiber_g: number;
+          sugar_g: number;
+          sodium_mg: number;
           notes: string | null;
           created_at: string;
         };
@@ -509,6 +515,62 @@ export interface Database {
           title: string;
         };
         Update: Partial<Database["public"]["Tables"]["task_subtasks"]["Row"]>;
+        Relationships: [];
+      };
+      recipe_ingredients: {
+        Row: {
+          id: string;
+          recipe_food_id: string;
+          ingredient_food_id: string | null;
+          quantity: number;
+          sort_order: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["recipe_ingredients"]["Row"]> & {
+          recipe_food_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recipe_ingredients"]["Row"]>;
+        Relationships: [];
+      };
+      user_favorite_foods: {
+        Row: {
+          user_id: string;
+          food_id: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_favorite_foods"]["Row"]> & {
+          user_id: string;
+          food_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_favorite_foods"]["Row"]>;
+        Relationships: [];
+      };
+      meal_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          meal_type: MealType | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["meal_templates"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meal_templates"]["Row"]>;
+        Relationships: [];
+      };
+      meal_template_items: {
+        Row: {
+          id: string;
+          template_id: string;
+          food_id: string | null;
+          quantity: number;
+          sort_order: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["meal_template_items"]["Row"]> & {
+          template_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meal_template_items"]["Row"]>;
         Relationships: [];
       };
     };

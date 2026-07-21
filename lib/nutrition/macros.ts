@@ -4,6 +4,8 @@ export interface Macros {
   fatG: number;
   carbsG: number;
   fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
 }
 
 /** Scale a food's per-serving macros by a quantity multiplier, rounded to 1 decimal. */
@@ -15,6 +17,8 @@ export function scaleMacros(base: Macros, quantity: number): Macros {
     fatG: round(base.fatG),
     carbsG: round(base.carbsG),
     fiberG: round(base.fiberG),
+    sugarG: round(base.sugarG),
+    sodiumMg: round(base.sodiumMg),
   };
 }
 
@@ -26,8 +30,10 @@ export function sumMacros(entries: Macros[]): Macros {
       fatG: total.fatG + m.fatG,
       carbsG: total.carbsG + m.carbsG,
       fiberG: total.fiberG + m.fiberG,
+      sugarG: total.sugarG + m.sugarG,
+      sodiumMg: total.sodiumMg + m.sodiumMg,
     }),
-    { calories: 0, proteinG: 0, fatG: 0, carbsG: 0, fiberG: 0 },
+    { calories: 0, proteinG: 0, fatG: 0, carbsG: 0, fiberG: 0, sugarG: 0, sodiumMg: 0 },
   );
 }
 

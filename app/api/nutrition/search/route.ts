@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   const { data: customMatches } = await supabase
     .from("foods")
     .select("*")
-    .eq("source", "custom")
+    .in("source", ["custom", "recipe"])
     .eq("created_by", user.id)
     .ilike("name", `%${query}%`)
     .limit(10);
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
   try {
     usdaResults = await searchUsdaFoods(query);
   } catch (error) {
-    // Custom foods still work even if the USDA lookup is unavailable/misconfigured.
+    // Custom foods/recipes still work even if the USDA lookup is unavailable/misconfigured.
     if (!customMatches || customMatches.length === 0) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : "Food search failed" },
@@ -54,6 +54,8 @@ export async function GET(request: Request) {
           fat_g: food.fatG,
           carbs_g: food.carbsG,
           fiber_g: food.fiberG,
+          sugar_g: food.sugarG,
+          sodium_mg: food.sodiumMg,
           serving_size: food.servingSize,
           serving_unit: food.servingUnit,
           source: "usda" as const,
@@ -82,6 +84,8 @@ export async function GET(request: Request) {
       fat_g: food.fatG,
       carbs_g: food.carbsG,
       fiber_g: food.fiberG,
+      sugar_g: food.sugarG,
+      sodium_mg: food.sodiumMg,
       serving_size: food.servingSize,
       serving_unit: food.servingUnit,
       source: "usda" as const,

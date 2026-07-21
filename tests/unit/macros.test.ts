@@ -4,31 +4,57 @@ import { computeBmi, scaleMacros, sumMacros } from "@/lib/nutrition/macros";
 
 describe("scaleMacros", () => {
   it("scales all fields by the quantity multiplier", () => {
-    const base = { calories: 100, proteinG: 10, fatG: 5, carbsG: 20, fiberG: 2 };
+    const base = {
+      calories: 100,
+      proteinG: 10,
+      fatG: 5,
+      carbsG: 20,
+      fiberG: 2,
+      sugarG: 8,
+      sodiumMg: 50,
+    };
     expect(scaleMacros(base, 2)).toEqual({
       calories: 200,
       proteinG: 20,
       fatG: 10,
       carbsG: 40,
       fiberG: 4,
+      sugarG: 16,
+      sodiumMg: 100,
     });
   });
 
   it("rounds to one decimal place", () => {
-    const base = { calories: 33, proteinG: 1, fatG: 1, carbsG: 1, fiberG: 1 };
+    const base = {
+      calories: 33,
+      proteinG: 1,
+      fatG: 1,
+      carbsG: 1,
+      fiberG: 1,
+      sugarG: 1,
+      sodiumMg: 1,
+    };
     expect(scaleMacros(base, 1 / 3).calories).toBeCloseTo(11, 1);
   });
 });
 
 describe("sumMacros", () => {
   it("sums an empty list to all zeros", () => {
-    expect(sumMacros([])).toEqual({ calories: 0, proteinG: 0, fatG: 0, carbsG: 0, fiberG: 0 });
+    expect(sumMacros([])).toEqual({
+      calories: 0,
+      proteinG: 0,
+      fatG: 0,
+      carbsG: 0,
+      fiberG: 0,
+      sugarG: 0,
+      sodiumMg: 0,
+    });
   });
 
   it("sums multiple entries field-by-field", () => {
     const entries = [
-      { calories: 100, proteinG: 10, fatG: 5, carbsG: 20, fiberG: 2 },
-      { calories: 200, proteinG: 15, fatG: 8, carbsG: 30, fiberG: 3 },
+      { calories: 100, proteinG: 10, fatG: 5, carbsG: 20, fiberG: 2, sugarG: 8, sodiumMg: 50 },
+      { calories: 200, proteinG: 15, fatG: 8, carbsG: 30, fiberG: 3, sugarG: 12, sodiumMg: 80 },
     ];
     expect(sumMacros(entries)).toEqual({
       calories: 300,
@@ -36,6 +62,8 @@ describe("sumMacros", () => {
       fatG: 13,
       carbsG: 50,
       fiberG: 5,
+      sugarG: 20,
+      sodiumMg: 130,
     });
   });
 });

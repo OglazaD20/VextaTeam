@@ -8,6 +8,8 @@ const NUTRIENT_NAMES = {
   fat_g: "Total lipid (fat)",
   carbs_g: "Carbohydrate, by difference",
   fiber_g: "Fiber, total dietary",
+  sugar_g: "Sugars, total including NLEA",
+  sodium_mg: "Sodium, Na",
 } as const;
 
 interface UsdaNutrient {
@@ -34,6 +36,8 @@ export interface UsdaFoodResult {
   fatG: number;
   carbsG: number;
   fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
   servingSize: number;
   servingUnit: string;
 }
@@ -53,6 +57,8 @@ function mapFoodItem(item: UsdaFoodItem): UsdaFoodResult {
     fatG: extractNutrient(item.foodNutrients, NUTRIENT_NAMES.fat_g),
     carbsG: extractNutrient(item.foodNutrients, NUTRIENT_NAMES.carbs_g),
     fiberG: extractNutrient(item.foodNutrients, NUTRIENT_NAMES.fiber_g),
+    sugarG: extractNutrient(item.foodNutrients, NUTRIENT_NAMES.sugar_g),
+    sodiumMg: extractNutrient(item.foodNutrients, NUTRIENT_NAMES.sodium_mg),
     servingSize: item.servingSize && item.servingSize > 0 ? item.servingSize : 100,
     servingUnit: item.servingSizeUnit ?? "g",
   };
