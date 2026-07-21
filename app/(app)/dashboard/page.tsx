@@ -111,7 +111,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Card>
+        <Card className="glass-surface">
           <CardHeader>
             <CardTitle className="text-base">Today</CardTitle>
           </CardHeader>
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-surface">
           <CardHeader>
             <CardTitle className="text-base">This week</CardTitle>
           </CardHeader>
@@ -156,7 +156,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="glass-surface">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Habit streaks</CardTitle>
           <Button asChild size="sm" variant="ghost">
@@ -168,7 +168,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="glass-surface">
         <CardHeader>
           <CardTitle className="text-base">AI recommendations</CardTitle>
         </CardHeader>

@@ -51,6 +51,12 @@
   --category-appointment: oklch(0.65 0.15 80);
   --category-break: oklch(0.75 0.01 265);
   --category-activity: oklch(0.66 0.16 200);
+
+  /* Nutrition macro colors — distinct from schedule category colors */
+  --macro-protein: oklch(0.6 0.17 25);
+  --macro-carbs: oklch(0.72 0.15 85);
+  --macro-fat: oklch(0.62 0.14 310);
+  --water: oklch(0.62 0.13 230);
 }
 
 .dark {
@@ -95,6 +101,11 @@
   --category-appointment: oklch(0.72 0.14 80);
   --category-break: oklch(0.4 0.01 265);
   --category-activity: oklch(0.74 0.15 200);
+
+  --macro-protein: oklch(0.68 0.16 25);
+  --macro-carbs: oklch(0.78 0.13 85);
+  --macro-fat: oklch(0.72 0.13 310);
+  --water: oklch(0.72 0.12 230);
 }
 
 @theme inline {
@@ -132,6 +143,11 @@
   --color-category-appointment: var(--category-appointment);
   --color-category-break: var(--category-break);
   --color-category-activity: var(--category-activity);
+
+  --color-macro-protein: var(--macro-protein);
+  --color-macro-carbs: var(--macro-carbs);
+  --color-macro-fat: var(--macro-fat);
+  --color-water: var(--water);
 
   --radius-sm: calc(var(--radius) - 0.5rem);
   --radius-md: calc(var(--radius) - 0.25rem);

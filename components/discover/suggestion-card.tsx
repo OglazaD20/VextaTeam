@@ -39,7 +39,7 @@ export function SuggestionCard({ suggestion }: { suggestion: ActivitySuggestion 
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm">
+    <div className="glass-surface flex flex-col gap-3 rounded-2xl border border-border p-4 shadow-sm">
       <MapPreview
         lat={suggestion.location.lat}
         lng={suggestion.location.lng}

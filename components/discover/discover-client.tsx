@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react";
+import { CompassIcon, Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { CategorySelector } from "@/components/discover/category-selector";
 import { SuggestionCard } from "@/components/discover/suggestion-card";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,9 +96,6 @@ export function DiscoverClient() {
         return;
       }
       setSuggestions(json.data ?? []);
-      if ((json.data ?? []).length === 0) {
-        toast.info("No matches nearby — try widening the distance or picking more categories.");
-      }
     } catch {
       setSearchError("Couldn't reach the activity discovery service");
     } finally {
@@ -197,13 +195,20 @@ export function DiscoverClient() {
 
       {searchError && <p className="text-sm text-destructive">{searchError}</p>}
 
-      {suggestions && suggestions.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {suggestions.map((suggestion, index) => (
-            <SuggestionCard key={`${suggestion.placeName}-${index}`} suggestion={suggestion} />
-          ))}
-        </div>
-      )}
+      {suggestions &&
+        (suggestions.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {suggestions.map((suggestion, index) => (
+              <SuggestionCard key={`${suggestion.placeName}-${index}`} suggestion={suggestion} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={CompassIcon}
+            title="No matches nearby"
+            description="Try a wider distance, a different budget, or a few more categories."
+          />
+        ))}
     </div>
   );
 }

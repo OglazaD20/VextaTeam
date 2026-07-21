@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { logWater } from "@/app/(app)/nutrition/actions";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 const QUICK_AMOUNTS = [200, 330, 500];
 
@@ -29,7 +28,7 @@ export function WaterTracker({ totalMl, goalMl }: { totalMl: number; goalMl: num
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm">
-          <DropletIcon className="size-4 text-blue-500" />
+          <DropletIcon className="size-4" style={{ color: "var(--water)" }} />
           <span className="font-medium">{totalMl} ml</span>
           <span className="text-muted-foreground">/ {goalMl} ml</span>
         </div>
@@ -37,8 +36,8 @@ export function WaterTracker({ totalMl, goalMl }: { totalMl: number; goalMl: num
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className={cn("h-full rounded-full bg-blue-500 transition-all")}
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: "var(--water)" }}
         />
       </div>
       <div className="flex gap-2">

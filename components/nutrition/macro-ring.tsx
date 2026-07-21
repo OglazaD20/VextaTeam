@@ -30,9 +30,9 @@ export function MacroRing({
   const remaining = Math.max(0, calorieGoal - calories);
 
   const bars: MacroBar[] = [
-    { label: "Protein", valueG: proteinG, goalG: proteinGoalG, color: "var(--category-task)" },
-    { label: "Carbs", valueG: carbsG, goalG: carbsGoalG, color: "var(--category-meeting)" },
-    { label: "Fat", valueG: fatG, goalG: fatGoalG, color: "var(--category-deadline)" },
+    { label: "Protein", valueG: proteinG, goalG: proteinGoalG, color: "var(--macro-protein)" },
+    { label: "Carbs", valueG: carbsG, goalG: carbsGoalG, color: "var(--macro-carbs)" },
+    { label: "Fat", valueG: fatG, goalG: fatGoalG, color: "var(--macro-fat)" },
   ];
 
   return (
