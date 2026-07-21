@@ -67,7 +67,7 @@ function rankedCandidates(
     .map((place) => ({ place, distanceKm: haversineDistanceKm(location, place.location) }))
     .filter((c) => c.distanceKm <= maxDistanceKm)
     .sort((a, b) => a.distanceKm - b.distanceKm)
-    .slice(0, 12);
+    .slice(0, 40);
 }
 
 export async function discoverActivities(filters: DiscoverFilters): Promise<ActivitySuggestion[]> {
@@ -94,9 +94,11 @@ export async function discoverActivities(filters: DiscoverFilters): Promise<Acti
         role: "system",
         content:
           "You suggest specific, appealing activities for a daily planner app, using only the real " +
-          "place candidates provided — never invent a place, address, or distance. Pick 4-6 of the " +
-          "best candidates given the user's filters and current weather (avoid outdoor picks in rain, " +
-          "prefer them in good weather). Write a short, vivid one-sentence pitch per suggestion, in the " +
+          "place candidates provided — never invent a place, address, or distance. Pick as many good " +
+          "candidates as reasonably fit the user's filters and current weather — aim for 12 to 20 when " +
+          "there are enough good options, don't pad the list with weak or redundant picks just to hit " +
+          "that range (avoid outdoor picks in rain, prefer them in good weather). Write a short, vivid " +
+          "one-sentence pitch per suggestion, in the " +
           "style of \"Go for a sunset walk in Łazienki Park.\" Reference each pick by its candidateIndex " +
           "in the provided list." +
           (filters.similarTo

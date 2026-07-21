@@ -37,6 +37,11 @@ export function sumMacros(entries: Macros[]): Macros {
   );
 }
 
+/** kcal → kJ, per the EU food-label conversion factor (Regulation (EU) No 1169/2011). */
+export function kcalToKj(kcal: number): number {
+  return Math.round(kcal * 4.184);
+}
+
 /** BMI from weight (kg) and height (cm). Returns null if either input is missing/invalid. */
 export function computeBmi(weightKg: number | null, heightCm: number | null): number | null {
   if (!weightKg || !heightCm || weightKg <= 0 || heightCm <= 0) return null;

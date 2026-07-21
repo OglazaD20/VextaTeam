@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const events = await searchNearbyEvents(parsed.data.location, parsed.data.maxDistanceKm);
+    const events = await searchNearbyEvents(parsed.data.location, parsed.data.maxDistanceKm, 30);
     const withDistance = events
       .map((event) => ({
         ...event,

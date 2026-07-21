@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeBmi, scaleMacros, sumMacros } from "@/lib/nutrition/macros";
+import { computeBmi, kcalToKj, scaleMacros, sumMacros } from "@/lib/nutrition/macros";
 
 describe("scaleMacros", () => {
   it("scales all fields by the quantity multiplier", () => {
@@ -65,6 +65,20 @@ describe("sumMacros", () => {
       sugarG: 20,
       sodiumMg: 130,
     });
+  });
+});
+
+describe("kcalToKj", () => {
+  it("converts using the EU label factor of 4.184", () => {
+    expect(kcalToKj(100)).toBe(418);
+  });
+
+  it("rounds to the nearest whole kJ", () => {
+    expect(kcalToKj(1)).toBe(4);
+  });
+
+  it("converts zero to zero", () => {
+    expect(kcalToKj(0)).toBe(0);
   });
 });
 

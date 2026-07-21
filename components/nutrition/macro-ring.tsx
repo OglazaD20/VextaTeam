@@ -1,3 +1,4 @@
+import { kcalToKj } from "@/lib/nutrition/macros";
 import { cn } from "@/lib/utils";
 
 interface MacroBar {
@@ -45,6 +46,7 @@ export function MacroRing({
       >
         <div className="flex size-28 flex-col items-center justify-center rounded-full bg-background">
           <span className="text-2xl font-semibold">{Math.round(calories)}</span>
+          <span className="text-[10px] text-muted-foreground">kcal · {kcalToKj(calories)} kJ</span>
           <span className="text-[11px] text-muted-foreground">
             {remaining > 0 ? `${Math.round(remaining)} left` : "goal reached"}
           </span>

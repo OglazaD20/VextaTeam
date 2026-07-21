@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { kcalToKj } from "@/lib/nutrition/macros";
 import { cn } from "@/lib/utils";
 import type { MealType, Tables } from "@/types/database";
 
@@ -51,7 +52,7 @@ function FoodResultRow({
         <span className="block font-medium">{food.name}</span>
         <span className="block text-xs text-muted-foreground">
           {food.brand ? `${food.brand} · ` : ""}
-          {Math.round(food.calories)} cal per {food.serving_size} {food.serving_unit}
+          {Math.round(food.calories)} kcal per {food.serving_size} {food.serving_unit}
         </span>
       </button>
       <button
@@ -267,9 +268,9 @@ export function FoodSearchDialog({ mealType }: { mealType: MealType }) {
             <div>
               <p className="font-medium">{selected.name}</p>
               <p className="text-xs text-muted-foreground">
-                {Math.round(selected.calories)} cal · {selected.protein_g}g protein ·{" "}
-                {selected.carbs_g}g carbs · {selected.fat_g}g fat per {selected.serving_size}{" "}
-                {selected.serving_unit}
+                {Math.round(selected.calories)} kcal · {kcalToKj(selected.calories)} kJ ·{" "}
+                {selected.protein_g}g protein · {selected.carbs_g}g carbs · {selected.fat_g}g fat
+                per {selected.serving_size} {selected.serving_unit}
               </p>
             </div>
             <div className="flex flex-col gap-1.5">

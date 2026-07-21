@@ -6,11 +6,11 @@ import { createClient } from "@/lib/supabase/server";
 import { scaleMacros, sumMacros } from "@/lib/nutrition/macros";
 import type { MealType, Tables, UpdateTables } from "@/types/database";
 import {
-  createCustomFoodSchema,
   createRecipeSchema,
   logFoodSchema,
   logWaterSchema,
   logWeightSchema,
+  quickAddFoodSchema,
   saveMealTemplateSchema,
   updateFoodLogSchema,
   updateNutritionGoalsSchema,
@@ -250,10 +250,19 @@ export async function deleteFoodLog(id: string): Promise<ActionResult> {
   return {};
 }
 
-export async function createCustomFood(formData: FormData): Promise<ActionResult<{ id: string }>> {
-  const parsed = createCustomFoodSchema.safeParse({
+/**
+ * Quick-add flow: creates the food (per 100g/ml, the European label
+ * convention, or per portion) and immediately logs it as eaten today in one
+ * step, so it counts toward calories/macros right away instead of just
+ * sitting in the library until separately searched and logged.
+ */
+export async function createAndLogFood(formData: FormData): Promise<ActionResult> {
+  const parsed = quickAddFoodSchema.safeParse({
     name: formData.get("name"),
     brand: formData.get("brand"),
+    mealType: formData.get("mealType"),
+    basis: formData.get("basis"),
+    amount: formData.get("amount"),
     calories: formData.get("calories"),
     proteinG: formData.get("proteinG"),
     fatG: formData.get("fatG"),
@@ -261,10 +270,6 @@ export async function createCustomFood(formData: FormData): Promise<ActionResult
     fiberG: formData.get("fiberG"),
     sugarG: formData.get("sugarG"),
     sodiumMg: formData.get("sodiumMg"),
-    servingSize: formData.get("servingSize"),
-    servingUnit: formData.get("servingUnit"),
-    weightG: formData.get("weightG"),
-    defaultMealType: formData.get("defaultMealType"),
   });
 
   if (!parsed.success) {
@@ -273,8 +278,9 @@ export async function createCustomFood(formData: FormData): Promise<ActionResult
 
   const { supabase, user } = await requireUser();
   const data = parsed.data;
+  const isPer100 = data.basis === "per100g";
 
-  const { data: created, error } = await supabase
+  const { data: created, error: createError } = await supabase
     .from("foods")
     .insert({
       name: data.name,
@@ -286,22 +292,51 @@ export async function createCustomFood(formData: FormData): Promise<ActionResult
       fiber_g: data.fiberG,
       sugar_g: data.sugarG,
       sodium_mg: data.sodiumMg,
-      serving_size: data.servingSize,
-      serving_unit: data.servingUnit,
-      weight_g: data.weightG ?? null,
-      default_meal_type: data.defaultMealType ?? null,
+      serving_size: isPer100 ? 100 : 1,
+      serving_unit: isPer100 ? "g" : "portion",
+      default_meal_type: data.mealType,
       source: "custom",
       created_by: user.id,
     })
     .select("id")
     .single();
 
-  if (error || !created) {
-    return { error: error?.message ?? "Couldn't save that food" };
+  if (createError || !created) {
+    return { error: createError?.message ?? "Couldn't save that food" };
   }
 
+  const scaleFactor = isPer100 ? data.amount / 100 : data.amount;
+  const scaled = scaleMacros(
+    {
+      calories: data.calories,
+      proteinG: data.proteinG,
+      fatG: data.fatG,
+      carbsG: data.carbsG,
+      fiberG: data.fiberG,
+      sugarG: data.sugarG,
+      sodiumMg: data.sodiumMg,
+    },
+    scaleFactor,
+  );
+
+  const { error: logError } = await supabase.from("food_logs").insert({
+    user_id: user.id,
+    food_id: created.id,
+    meal_type: data.mealType,
+    quantity: scaleFactor,
+    calories: scaled.calories,
+    protein_g: scaled.proteinG,
+    fat_g: scaled.fatG,
+    carbs_g: scaled.carbsG,
+    fiber_g: scaled.fiberG,
+    sugar_g: scaled.sugarG,
+    sodium_mg: scaled.sodiumMg,
+  });
+
+  if (logError) return { error: logError.message };
+
   revalidateNutrition();
-  return { data: { id: created.id } };
+  return {};
 }
 
 export async function toggleFavoriteFood(foodId: string): Promise<ActionResult<{ isFavorite: boolean }>> {

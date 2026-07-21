@@ -183,7 +183,7 @@ export function RecipeBuilderDialog({ onSaved }: { onSaved: () => void }) {
                   >
                     <span>{food.name}</span>
                     <span className="text-xs text-muted-foreground">
-                      {Math.round(food.calories)} cal
+                      {Math.round(food.calories)} kcal
                     </span>
                   </button>
                 ))}

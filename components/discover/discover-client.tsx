@@ -5,6 +5,7 @@ import { CompassIcon, Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react
 import { toast } from "sonner";
 
 import { generateSimilarActivities } from "@/app/(app)/discover/actions";
+import { ActivitiesOverviewMap } from "@/components/discover/activities-overview-map";
 import { CategorySelector } from "@/components/discover/category-selector";
 import { EventCard } from "@/components/discover/event-card";
 import { SavedActivitiesList } from "@/components/discover/saved-activities-list";
@@ -279,6 +280,16 @@ export function DiscoverClient({
         {isGeneratingSimilar && (
           <p className="text-sm text-muted-foreground">Finding more like that…</p>
         )}
+
+        {location.status === "ready" && (suggestions?.length || events?.length) ? (
+          <ActivitiesOverviewMap
+            center={{ lat: location.lat, lng: location.lng }}
+            points={[
+              ...(suggestions ?? []).map((s) => s.location),
+              ...(events ?? []).map((e) => e.location),
+            ]}
+          />
+        ) : null}
 
         {events && events.length > 0 && (
           <div className="flex flex-col gap-3">

@@ -44,7 +44,7 @@ export function RecipesSection({ initialRecipes }: { initialRecipes: Tables<"foo
             >
               <span className="truncate">
                 {recipe.name}
-                <span className="text-muted-foreground"> · {Math.round(recipe.calories)} cal/serving</span>
+                <span className="text-muted-foreground"> · {Math.round(recipe.calories)} kcal/serving</span>
               </span>
               <button
                 type="button"

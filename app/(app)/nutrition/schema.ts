@@ -36,31 +36,31 @@ export const updateFoodLogSchema = z.object({
 });
 export type UpdateFoodLogInput = z.infer<typeof updateFoodLogSchema>;
 
-export const createCustomFoodSchema = z.object({
+/**
+ * Simplified "quick add" for a food you're entering yourself — the European
+ * label convention of stating nutrition per 100 g/ml (rather than an
+ * arbitrary named serving) doubles as the simplification: only name,
+ * calories, and how much you ate are required, everything else defaults to
+ * zero. Creating the food and logging it as eaten today happen in one step.
+ */
+export const quickAddFoodSchema = z.object({
   name: z.string().trim().min(1).max(140),
   brand: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? undefined : v),
     z.string().trim().max(140).optional(),
   ),
+  mealType: mealTypeEnum,
+  basis: z.enum(["per100g", "portion"]).default("per100g"),
+  amount: z.coerce.number().positive().max(5000),
   calories: z.coerce.number().min(0),
-  proteinG: z.coerce.number().min(0),
-  fatG: z.coerce.number().min(0),
-  carbsG: z.coerce.number().min(0),
+  proteinG: optionalNonNegative,
+  fatG: optionalNonNegative,
+  carbsG: optionalNonNegative,
   fiberG: optionalNonNegative,
   sugarG: optionalNonNegative,
   sodiumMg: optionalNonNegative,
-  servingSize: z.coerce.number().positive().default(1),
-  servingUnit: z.string().trim().min(1).max(30).default("serving"),
-  weightG: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    z.coerce.number().positive().optional(),
-  ),
-  defaultMealType: z.preprocess(
-    (v) => (v === "" || v === null || v === undefined ? undefined : v),
-    mealTypeEnum.optional(),
-  ),
 });
-export type CreateCustomFoodInput = z.infer<typeof createCustomFoodSchema>;
+export type QuickAddFoodInput = z.infer<typeof quickAddFoodSchema>;
 
 export const logWaterSchema = z.object({
   amountMl: z.coerce.number().int().positive().max(5000),

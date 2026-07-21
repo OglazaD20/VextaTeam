@@ -63,7 +63,7 @@ function EntryRow({ entry }: { entry: FoodLogEntry }) {
         {entry.quantity !== 1 && <span className="text-muted-foreground"> ×{entry.quantity}</span>}
       </span>
       <div className="flex shrink-0 items-center gap-1">
-        <span className="text-xs text-muted-foreground">{Math.round(entry.calories)} cal</span>
+        <span className="text-xs text-muted-foreground">{Math.round(entry.calories)} kcal</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -119,7 +119,7 @@ export function MealSection({
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-medium">{MEAL_LABEL[mealType]}</h3>
           {totalCalories > 0 && (
-            <span className="text-xs text-muted-foreground">{Math.round(totalCalories)} cal</span>
+            <span className="text-xs text-muted-foreground">{Math.round(totalCalories)} kcal</span>
           )}
         </div>
         <div className="flex items-center gap-1">
