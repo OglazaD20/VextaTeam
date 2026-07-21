@@ -15,6 +15,8 @@ export interface PlanReasoningInput {
   notableFacts: PlacementFact[];
   bumpedTitles: string[];
   weather: WeatherSnapshot | null;
+  /** Last night's sleep, when logged, so the summary can note a lighter/heavier day. */
+  lastNightSleep: { hours: number | null; quality: number | null } | null;
 }
 
 /**
@@ -23,10 +25,25 @@ export interface PlanReasoningInput {
  * never invents times, weather, or bumped items; it only writes the
  * human-readable explanation for facts it's given.
  */
+const POOR_SLEEP_HOURS_THRESHOLD = 6;
+const POOR_SLEEP_QUALITY_THRESHOLD = 2;
+
+function isNotableSleep(sleep: PlanReasoningInput["lastNightSleep"]): boolean {
+  if (!sleep) return false;
+  return (
+    (sleep.hours !== null && sleep.hours < POOR_SLEEP_HOURS_THRESHOLD) ||
+    (sleep.quality !== null && sleep.quality <= POOR_SLEEP_QUALITY_THRESHOLD)
+  );
+}
+
 export async function generatePlanReasoning(
   input: PlanReasoningInput,
 ): Promise<PlanReasoningResult> {
-  if (input.notableFacts.length === 0 && input.bumpedTitles.length === 0) {
+  if (
+    input.notableFacts.length === 0 &&
+    input.bumpedTitles.length === 0 &&
+    !isNotableSleep(input.lastNightSleep)
+  ) {
     return { itemReasoning: [], daySummary: "" };
   }
 
@@ -43,8 +60,10 @@ export async function generatePlanReasoning(
           "condition, or reason not present in the input. Examples of tone: \"Scheduled right after your",
           "Team standup ends.\" \"Placed during your usual high-focus morning window.\" \"Kept at your usual",
           "7am running time.\" If bumpedTitles is non-empty, also write a short, reassuring 1-2 sentence",
-          "daySummary explaining the day was too full and those items were left unscheduled for a later day",
-          "— otherwise return an empty daySummary.",
+          "daySummary explaining the day was too full and those items were left unscheduled for a later day.",
+          "If lastNightSleep shows short or poor-quality sleep, mention in the daySummary that it's worth",
+          "taking it easier today — but never invent a sleep figure that isn't in the input. Return an empty",
+          "daySummary only if there is truly nothing worth telling the user.",
         ].join(" "),
       },
       { role: "user", content: JSON.stringify(input) },

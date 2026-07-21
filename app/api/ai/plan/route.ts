@@ -5,6 +5,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { getCurrentWeather, type WeatherSnapshot } from "@/lib/activities/weather-client";
 import { estimateDurations } from "@/lib/ai/estimate-durations";
 import { generatePlanReasoning } from "@/lib/ai/generate-plan-reasoning";
+import { getTodayKey } from "@/lib/habits/today-key";
 import { getWakingWindowUtc } from "@/lib/scheduling/day-range";
 import {
   computePlacementFacts,
@@ -159,11 +160,27 @@ export async function POST(request: Request) {
     }
   }
 
+  const planDateKey = targetDate ?? getTodayKey(timeZone);
+  const { data: healthToday } = await supabase
+    .from("health_metrics")
+    .select("sleep_hours, sleep_quality")
+    .eq("user_id", user.id)
+    .eq("logged_for_date", planDateKey)
+    .maybeSingle();
+  const lastNightSleep = healthToday
+    ? { hours: healthToday.sleep_hours, quality: healthToday.sleep_quality }
+    : null;
+
   let reasoningById = new Map<string, string>();
   let daySummary = "";
-  if (notableFacts.length > 0 || bumpedTitles.length > 0) {
+  if (notableFacts.length > 0 || bumpedTitles.length > 0 || lastNightSleep) {
     try {
-      const reasoning = await generatePlanReasoning({ notableFacts, bumpedTitles, weather });
+      const reasoning = await generatePlanReasoning({
+        notableFacts,
+        bumpedTitles,
+        weather,
+        lastNightSleep,
+      });
       reasoningById = new Map(reasoning.itemReasoning.map((r) => [r.id, r.reasoning]));
       daySummary = reasoning.daySummary;
     } catch {

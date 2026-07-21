@@ -575,6 +575,33 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["meal_template_items"]["Row"]>;
         Relationships: [];
       };
+      health_metrics: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_for_date: string;
+          sleep_hours: number | null;
+          sleep_quality: number | null;
+          bedtime: string | null;
+          wake_time: string | null;
+          steps: number | null;
+          calories_burned: number | null;
+          resting_heart_rate: number | null;
+          avg_heart_rate: number | null;
+          active_minutes: number | null;
+          exercise_type: string | null;
+          exercise_minutes: number | null;
+          distance_km: number | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["health_metrics"]["Row"]> & {
+          user_id: string;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["health_metrics"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
