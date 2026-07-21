@@ -477,6 +477,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]>;
         Relationships: [];
       };
+      activity_suggestions: {
+        Row: {
+          id: string;
+          user_id: string;
+          categories: string[];
+          filters: Record<string, unknown>;
+          results: Record<string, unknown>[];
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["activity_suggestions"]["Row"]> & {
+          user_id: string;
+          categories: string[];
+          filters: Record<string, unknown>;
+          results: Record<string, unknown>[];
+        };
+        Update: Partial<Database["public"]["Tables"]["activity_suggestions"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
