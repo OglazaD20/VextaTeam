@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { CheckIcon } from "lucide-react";
+import { toast } from "sonner";
 
 import { setScheduleItemStatus } from "@/app/(app)/today/actions";
 import { CATEGORY_LABEL, CATEGORY_VAR } from "@/lib/scheduling/category-style";
@@ -31,12 +32,43 @@ export function TimelineBlock({
   onResizeStart: (event: React.PointerEvent) => void;
   isDragging: boolean;
 }) {
-  const isCompleted = item.status === "completed";
+  // Optimistic, matching ScheduleBlock — flips instantly rather than waiting
+  // on the server, reverting only if the update actually fails.
+  const [isCompleted, setIsCompleted] = React.useState(item.status === "completed");
+
+  // Re-syncs when the server-provided status changes, without an effect
+  // (React's recommended pattern for syncing state from props).
+  const [syncedStatus, setSyncedStatus] = React.useState(item.status);
+  if (item.status !== syncedStatus) {
+    setSyncedStatus(item.status);
+    setIsCompleted(item.status === "completed");
+  }
+
   const isShort = height < 40;
 
   function handleToggleComplete(event: React.MouseEvent) {
     event.stopPropagation();
-    void setScheduleItemStatus(item.id, isCompleted ? "planned" : "completed");
+    const next = !isCompleted;
+    setIsCompleted(next);
+
+    void setScheduleItemStatus(item.id, next ? "completed" : "planned").then((result) => {
+      if (result.error) {
+        setIsCompleted(!next);
+        toast.error("Couldn't update that", { description: result.error });
+        return;
+      }
+      if (next) {
+        toast.success(`"${item.title}" completed`, {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              setIsCompleted(false);
+              void setScheduleItemStatus(item.id, "planned");
+            },
+          },
+        });
+      }
+    });
   }
 
   return (
@@ -70,11 +102,11 @@ export function TimelineBlock({
           onClick={handleToggleComplete}
           aria-label={isCompleted ? "Mark as not done" : "Mark as done"}
           className={cn(
-            "flex size-3.5 shrink-0 items-center justify-center rounded-full border",
-            isCompleted ? "border-success bg-success text-white" : "border-border text-transparent",
+            "-m-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 p-1 transition-all active:scale-90",
+            isCompleted ? "border-success bg-success text-white" : "border-border text-transparent hover:border-primary",
           )}
         >
-          <CheckIcon className="size-2.5" strokeWidth={4} />
+          <CheckIcon className="size-3" strokeWidth={4} />
         </button>
         <span className={cn("truncate font-medium", isCompleted && "line-through")}>
           {item.title}

@@ -353,6 +353,32 @@ export async function setScheduleItemStatus(
   return {};
 }
 
+export async function bulkSetScheduleItemStatus(
+  ids: string[],
+  status: "completed" | "planned" | "skipped" | "cancelled",
+): Promise<ActionResult> {
+  if (ids.length === 0) return {};
+
+  const { supabase, user } = await requireUser();
+
+  const { error } = await supabase
+    .from("schedule_items")
+    .update({ status })
+    .in("id", ids)
+    .eq("user_id", user.id);
+
+  if (error) return { error: error.message };
+
+  if (status === "completed") {
+    for (const id of ids) {
+      await awardXp(supabase, user.id, "task_completed", id, 10);
+    }
+  }
+
+  revalidateSchedule();
+  return {};
+}
+
 export async function deleteScheduleItem(id: string): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
 
