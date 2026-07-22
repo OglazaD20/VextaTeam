@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { deleteIfGoogleConnected, pushIfGoogleConnected } from "@/lib/calendar/sync";
+import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 import {
@@ -156,6 +157,21 @@ export async function createScheduleItem(formData: FormData): Promise<ActionResu
 
   await syncItemTags(supabase, user.id, data.id, formData.get("tagNames"));
   await pushIfGoogleConnected(supabase, user.id, data);
+
+  // Only tasks with notes become memories — a bare "Buy milk" isn't
+  // recallable, but notes usually carry the actual context worth finding
+  // later ("Call the dentist — ask about the Tuesday slot").
+  if (parsed.data.notes) {
+    await recordMemory(supabase, {
+      userId: user.id,
+      sourceType: "task",
+      sourceId: data.id,
+      title: parsed.data.title,
+      content: parsed.data.notes,
+      category: parsed.data.category || "productivity",
+      occurredAt: parsed.data.scheduledStart ?? parsed.data.dueAt ?? undefined,
+    });
+  }
 
   revalidateSchedule();
   return {};
@@ -348,6 +364,7 @@ export async function deleteScheduleItem(id: string): Promise<ActionResult> {
   }
 
   if (data) await deleteIfGoogleConnected(supabase, user.id, data.external_event_id);
+  await deleteMemoryForSource(supabase, user.id, "task", id);
 
   revalidateSchedule();
   return {};

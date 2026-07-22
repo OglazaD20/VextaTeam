@@ -11,6 +11,7 @@ import {
   computeSpendingByCategory,
   projectMonthEndSpend,
 } from "@/lib/finance/calculations";
+import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 import {
@@ -60,17 +61,37 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
   const { supabase, user } = await requireUser();
   const data = parsed.data;
 
-  const { error } = await supabase.from("transactions").insert({
-    user_id: user.id,
-    type: data.type,
-    amount: data.amount,
-    category: data.category,
-    description: data.description ?? null,
-    occurred_at: data.occurredAt,
-    receipt_storage_path: data.receiptStoragePath ?? null,
-  });
+  const { data: inserted, error } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: user.id,
+      type: data.type,
+      amount: data.amount,
+      category: data.category,
+      description: data.description ?? null,
+      occurred_at: data.occurredAt,
+      receipt_storage_path: data.receiptStoragePath ?? null,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  // Only transactions with a description become memories — a bare "€4.50
+  // food expense" isn't recallable, but "Birthday gift for mom" is exactly
+  // what "what gift ideas did I save?" style queries are about.
+  if (inserted && data.description) {
+    await recordMemory(supabase, {
+      userId: user.id,
+      sourceType: "finance",
+      sourceId: inserted.id,
+      title: data.description,
+      content: `${data.type === "income" ? "Received" : "Spent"} ${data.amount} on ${data.category}: ${data.description}`,
+      category: data.category,
+      occurredAt: data.occurredAt,
+    });
+  }
+
   revalidateFinance();
   return {};
 }
@@ -92,6 +113,7 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
     await supabase.storage.from("receipt-images").remove([existing.receipt_storage_path]);
   }
 
+  await deleteMemoryForSource(supabase, user.id, "finance", id);
   revalidateFinance();
   return {};
 }

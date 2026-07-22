@@ -1,5 +1,6 @@
 import {
   AppleIcon,
+  BrainIcon,
   CalendarClockIcon,
   CalendarDaysIcon,
   CompassIcon,
@@ -26,6 +27,7 @@ export const NAV_ITEMS = [
   { href: "/health", label: "Health", icon: HeartPulseIcon },
   { href: "/finance", label: "Finance", icon: WalletIcon },
   { href: "/discover", label: "Discover", icon: CompassIcon },
+  { href: "/memory", label: "Memory", icon: BrainIcon },
   { href: "/focus", label: "Focus", icon: TimerIcon },
   { href: "/stats", label: "Stats", icon: CalendarClockIcon },
   { href: "/chat", label: "Assistant", icon: SparklesIcon },

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getTodayKey } from "@/lib/habits/today-key";
+import { recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 import { logMoodSchema, type LogMoodInput } from "./schema";
@@ -46,23 +47,42 @@ export async function logMood(input: LogMoodInput): Promise<ActionResult> {
     .single();
   const timeZone = profile?.timezone ?? "UTC";
 
-  const { error } = await supabase.from("mood_logs").insert({
-    user_id: user.id,
-    mood: data.mood,
-    stress: data.stress ?? null,
-    energy: data.energy ?? null,
-    motivation: data.motivation ?? null,
-    productivity: data.productivity ?? null,
-    happiness: data.happiness ?? null,
-    sleep_quality: data.sleepQuality ?? null,
-    anxiety: data.anxiety ?? null,
-    confidence: data.confidence ?? null,
-    focus: data.focus ?? null,
-    note: data.note ?? null,
-    logged_for_date: getTodayKey(timeZone),
-  });
+  const { data: inserted, error } = await supabase
+    .from("mood_logs")
+    .insert({
+      user_id: user.id,
+      mood: data.mood,
+      stress: data.stress ?? null,
+      energy: data.energy ?? null,
+      motivation: data.motivation ?? null,
+      productivity: data.productivity ?? null,
+      happiness: data.happiness ?? null,
+      sleep_quality: data.sleepQuality ?? null,
+      anxiety: data.anxiety ?? null,
+      confidence: data.confidence ?? null,
+      focus: data.focus ?? null,
+      note: data.note ?? null,
+      logged_for_date: getTodayKey(timeZone),
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  // Only check-ins with a note are recorded as memories — a bare mood tap
+  // (mood: 3) isn't something anyone later asks "when did I feel a 3?"
+  // about; a written note is exactly that kind of recallable moment.
+  if (inserted && data.note) {
+    await recordMemory(supabase, {
+      userId: user.id,
+      sourceType: "mood",
+      sourceId: inserted.id,
+      title: `Mood check-in`,
+      content: data.note,
+      category: "wellbeing",
+    });
+  }
+
   revalidateMood();
   return {};
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { discoverActivities, type ActivitySuggestion } from "@/lib/activities/discover";
 import { pushIfGoogleConnected } from "@/lib/calendar/sync";
+import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 import {
@@ -144,18 +145,35 @@ export async function saveActivity(input: SaveActivityInput): Promise<ActionResu
   }
 
   const data = parsed.data;
-  const { error } = await supabase.from("saved_activities").insert({
-    user_id: user.id,
-    kind: data.kind,
-    title: data.title,
-    subtitle: data.subtitle,
-    lat: data.lat,
-    lng: data.lng,
-    starts_at: data.startsAt ?? null,
-    data: data.data,
-  });
+  const { data: inserted, error } = await supabase
+    .from("saved_activities")
+    .insert({
+      user_id: user.id,
+      kind: data.kind,
+      title: data.title,
+      subtitle: data.subtitle,
+      lat: data.lat,
+      lng: data.lng,
+      starts_at: data.startsAt ?? null,
+      data: data.data,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+
+  if (inserted) {
+    await recordMemory(supabase, {
+      userId: user.id,
+      sourceType: "favorite_place",
+      sourceId: inserted.id,
+      title: data.title,
+      content: `Saved ${data.kind === "event" ? "event" : "place"}: ${data.title} at ${data.subtitle}`,
+      category: "lifestyle",
+      occurredAt: data.startsAt ?? undefined,
+    });
+  }
+
   revalidatePath("/discover");
   return {};
 }
@@ -177,6 +195,7 @@ export async function unsaveActivity(savedId: string): Promise<ActionResult> {
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
+  await deleteMemoryForSource(supabase, user.id, "favorite_place", savedId);
   revalidatePath("/discover");
   return {};
 }

@@ -59,6 +59,24 @@ export type GoalCategory =
 export type TransactionType = "income" | "expense";
 export type BillingCycle = "weekly" | "monthly" | "yearly";
 export type AssetType = "investment" | "savings" | "property" | "other";
+export type MemorySourceType =
+  | "task"
+  | "calendar_event"
+  | "habit"
+  | "goal"
+  | "note"
+  | "discover_activity"
+  | "nutrition"
+  | "health"
+  | "mood"
+  | "finance"
+  | "ai_conversation"
+  | "favorite_place"
+  | "workout"
+  | "reading"
+  | "file"
+  | "chat_summary"
+  | "preference_note";
 
 export interface RecurrenceRule {
   freq: "daily" | "weekly" | "monthly";
@@ -855,9 +873,64 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["finance_insights"]["Row"]>;
         Relationships: [];
       };
+      memories: {
+        Row: {
+          id: string;
+          user_id: string;
+          source_type: MemorySourceType;
+          source_id: string | null;
+          title: string;
+          content: string;
+          summary: string | null;
+          category: string | null;
+          tags: string[];
+          embedding: number[] | null;
+          pinned: boolean;
+          favorited: boolean;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["memories"]["Row"]> & {
+          user_id: string;
+          source_type: MemorySourceType;
+          title: string;
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["memories"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      match_memories: {
+        Args: { query_embedding: number[]; match_user_id: string; match_count?: number };
+        Returns: {
+          id: string;
+          title: string;
+          content: string;
+          summary: string | null;
+          category: string | null;
+          tags: string[];
+          source_type: MemorySourceType;
+          source_id: string | null;
+          occurred_at: string;
+          pinned: boolean;
+          favorited: boolean;
+          similarity: number;
+        }[];
+      };
+      match_related_memories: {
+        Args: { target_memory_id: string; match_count?: number };
+        Returns: {
+          id: string;
+          title: string;
+          content: string;
+          category: string | null;
+          occurred_at: string;
+          similarity: number;
+        }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

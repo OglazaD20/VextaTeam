@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { generateGoalBreakdown } from "@/lib/ai/generate-goal-breakdown";
+import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 import {
@@ -111,6 +112,17 @@ export async function createGoal(formData: FormData): Promise<ActionResult<{ id:
     return { error: error?.message ?? "Couldn't create that goal" };
   }
 
+  await recordMemory(supabase, {
+    userId: user.id,
+    sourceType: "goal",
+    sourceId: goal.id,
+    title: data.title,
+    content: [data.description, `Category: ${data.category}`, data.deadline ? `Deadline: ${data.deadline}` : null]
+      .filter(Boolean)
+      .join(". "),
+    category: data.category,
+  });
+
   if (data.aiBreakdown) {
     try {
       const breakdown = await generateGoalBreakdown({
@@ -216,6 +228,7 @@ export async function deleteGoal(goalId: string): Promise<ActionResult> {
   const { error } = await supabase.from("goals").delete().eq("id", goalId).eq("user_id", user.id);
 
   if (error) return { error: error.message };
+  await deleteMemoryForSource(supabase, user.id, "goal", goalId);
   revalidateGoals();
   return {};
 }

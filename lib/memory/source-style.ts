@@ -1,0 +1,41 @@
+import type { MemorySourceType } from "@/types/database";
+
+export const MEMORY_SOURCE_LABEL: Record<MemorySourceType, string> = {
+  task: "Task",
+  calendar_event: "Calendar",
+  habit: "Habit",
+  goal: "Goal",
+  note: "Note",
+  discover_activity: "Discover",
+  nutrition: "Nutrition",
+  health: "Health",
+  mood: "Mood",
+  finance: "Finance",
+  ai_conversation: "AI chat",
+  favorite_place: "Saved place",
+  workout: "Workout",
+  reading: "Reading",
+  file: "File",
+  chat_summary: "AI chat",
+  preference_note: "Preference",
+};
+
+export const MEMORY_SOURCE_ICON: Record<MemorySourceType, string> = {
+  task: "✅",
+  calendar_event: "📅",
+  habit: "🔁",
+  goal: "🎯",
+  note: "📝",
+  discover_activity: "🧭",
+  nutrition: "🍽️",
+  health: "🩺",
+  mood: "😊",
+  finance: "💰",
+  ai_conversation: "🤖",
+  favorite_place: "📍",
+  workout: "🏋️",
+  reading: "📚",
+  file: "📎",
+  chat_summary: "🤖",
+  preference_note: "⚙️",
+};
