@@ -182,15 +182,18 @@ export function TimelineGrid({
     };
   }, [drag, items, dateKey, timeZone]);
 
-  function handleGridClick(event: React.MouseEvent) {
-    if (event.target !== event.currentTarget) return;
-    const minutes = snapMinutes(minutesFromEvent(event.clientY));
+  function openEditorAt(minutes: number) {
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
     const pad = (n: number) => String(n).padStart(2, "0");
     setEditingItem(null);
     setCreateAt(`${dateKey}T${pad(hours)}:${pad(mins)}:00`);
     setEditorOpen(true);
+  }
+
+  function handleGridClick(event: React.MouseEvent) {
+    if (event.target !== event.currentTarget) return;
+    openEditorAt(snapMinutes(minutesFromEvent(event.clientY)));
   }
 
   const isToday = dateKey === getTodayKey(timeZone);

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDownIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteMemory, getRelatedMemories, toggleMemoryFavorited, toggleMemoryPinned } from "@/app/(app)/memory/actions";
@@ -24,6 +24,7 @@ export function MemoryCard({ memory }: { memory: Tables<"memories"> }) {
   const [pinned, setPinned] = React.useState(memory.pinned);
   const [favorited, setFavorited] = React.useState(memory.favorited);
   const [isDeleted, setDeleted] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const [isRelatedOpen, setRelatedOpen] = React.useState(false);
   const [related, setRelated] = React.useState<RelatedMemory[] | null>(null);
   const [isLoadingRelated, setLoadingRelated] = React.useState(false);
@@ -47,8 +48,10 @@ export function MemoryCard({ memory }: { memory: Tables<"memories"> }) {
   }
 
   async function handleDelete() {
+    setIsDeleting(true);
     const result = await deleteMemory(memory.id);
     if (result.error) {
+      setIsDeleting(false);
       toast.error("Couldn't remove that memory", { description: result.error });
       return;
     }
@@ -115,10 +118,11 @@ export function MemoryCard({ memory }: { memory: Tables<"memories"> }) {
           <button
             type="button"
             onClick={handleDelete}
+            disabled={isDeleting}
             aria-label="Delete memory"
-            className="rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive"
+            className="rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-destructive disabled:opacity-50"
           >
-            <Trash2Icon className="size-3.5" />
+            {isDeleting ? <Loader2Icon className="size-3.5 animate-spin" /> : <Trash2Icon className="size-3.5" />}
           </button>
         </div>
       </div>

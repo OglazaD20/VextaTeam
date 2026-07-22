@@ -118,20 +118,20 @@ export function GoalCard({ goal }: { goal: GoalWithMilestones }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {goal.status !== "completed" && (
-              <DropdownMenuItem onClick={() => handleStatus("completed")}>
+              <DropdownMenuItem disabled={isPending} onClick={() => handleStatus("completed")}>
                 <CheckIcon /> Mark complete
               </DropdownMenuItem>
             )}
             {goal.status !== "archived" ? (
-              <DropdownMenuItem onClick={() => handleStatus("archived")}>
+              <DropdownMenuItem disabled={isPending} onClick={() => handleStatus("archived")}>
                 <ArchiveIcon /> Archive
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onClick={() => handleStatus("active")}>
+              <DropdownMenuItem disabled={isPending} onClick={() => handleStatus("active")}>
                 <ArchiveIcon /> Restore
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+            <DropdownMenuItem variant="destructive" disabled={isPending} onClick={handleDelete}>
               <Trash2Icon /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>

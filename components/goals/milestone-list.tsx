@@ -84,7 +84,14 @@ export function MilestoneList({
           placeholder="Add a milestone…"
           className="h-8 text-sm"
         />
-        <Button type="submit" size="icon" variant="ghost" className="size-8 shrink-0" disabled={!newTitle.trim()}>
+        <Button
+          type="submit"
+          size="icon"
+          variant="ghost"
+          className="size-8 shrink-0"
+          disabled={!newTitle.trim()}
+          aria-label="Add milestone"
+        >
           <PlusIcon className="size-3.5" />
         </Button>
       </form>
