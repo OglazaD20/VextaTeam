@@ -103,6 +103,42 @@ export function inferActivityCategory(
   return requested[0];
 }
 
+export interface GeocodeResult {
+  formatted: string;
+  location: LatLng;
+}
+
+/** Forward geocoding — turns a typed place/address into candidate locations, for "search another location" on the map. */
+export async function geocodeLocation(query: string, limit = 5): Promise<GeocodeResult[]> {
+  if (!env.PLACES_API_KEY) {
+    throw new Error("PLACES_API_KEY is not set. Location search is unavailable until it's configured.");
+  }
+
+  const url = new URL("https://api.geoapify.com/v1/geocode/search");
+  url.searchParams.set("text", query);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("apiKey", env.PLACES_API_KEY);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`Location search failed with status ${response.status}`);
+  }
+
+  const data: { features?: GeoapifyFeature[] } = await response.json();
+  return (data.features ?? [])
+    .filter((f) => f.properties.formatted)
+    .map((f) => ({
+      formatted: f.properties.formatted!,
+      location: { lat: f.properties.lat, lng: f.properties.lon },
+    }));
+}
+
+export function buildGeoapifyTileUrl(style: string, z: number, x: number, y: number): string {
+  const url = new URL(`https://maps.geoapify.com/v1/tile/${style}/${z}/${x}/${y}.png`);
+  url.searchParams.set("apiKey", env.PLACES_API_KEY ?? "");
+  return url.toString();
+}
+
 export function buildStaticMapUrl(location: LatLng, width = 400, height = 200): string {
   const url = new URL("https://maps.geoapify.com/v1/staticmap");
   url.searchParams.set("style", "osm-bright");

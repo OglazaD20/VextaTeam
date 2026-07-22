@@ -4,10 +4,11 @@ import * as React from "react";
 import { CompassIcon, Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { generateSimilarActivities } from "@/app/(app)/discover/actions";
-import { ActivitiesOverviewMap } from "@/components/discover/activities-overview-map";
+import { generateSimilarActivities, saveActivity } from "@/app/(app)/discover/actions";
 import { CategorySelector } from "@/components/discover/category-selector";
 import { EventCard } from "@/components/discover/event-card";
+import { InteractiveMap, type MapPoint } from "@/components/discover/interactive-map";
+import { LocationSearchBox } from "@/components/discover/location-search-box";
 import { SavedActivitiesList } from "@/components/discover/saved-activities-list";
 import { SuggestionCard } from "@/components/discover/suggestion-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { LatLng } from "@/lib/activities/distance";
 import type { ActivitySuggestion } from "@/lib/activities/discover";
 import type { ActivityCategory } from "@/lib/activities/geoapify-client";
 import type { EventCandidate } from "@/lib/activities/ticketmaster-client";
@@ -56,6 +58,9 @@ export function DiscoverClient({
   const [events, setEvents] = React.useState<EventWithDistance[] | null>(null);
   const [searchError, setSearchError] = React.useState<string | null>(null);
   const [isGeneratingSimilar, setIsGeneratingSimilar] = React.useState(false);
+  const [savedKeys, setSavedKeys] = React.useState<Set<string>>(new Set());
+  const [mapCenter, setMapCenter] = React.useState<LatLng | null>(null);
+  const [searchedCenter, setSearchedCenter] = React.useState<LatLng | null>(null);
 
   function requestLocation() {
     if (!("geolocation" in navigator)) {
@@ -81,8 +86,9 @@ export function DiscoverClient({
     );
   }
 
-  async function handleSearch() {
-    if (location.status !== "ready") {
+  async function handleSearch(overrideLocation?: LatLng) {
+    const searchLocation = overrideLocation ?? (location.status === "ready" ? location : null);
+    if (!searchLocation) {
       requestLocation();
       return;
     }
@@ -103,7 +109,7 @@ export function DiscoverClient({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               categories,
-              location: { lat: location.lat, lng: location.lng },
+              location: { lat: searchLocation.lat, lng: searchLocation.lng },
               maxDistanceKm: Number(maxDistanceKm),
               availableMinutes: Number(availableMinutes),
               budget,
@@ -124,7 +130,7 @@ export function DiscoverClient({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              location: { lat: location.lat, lng: location.lng },
+              location: { lat: searchLocation.lat, lng: searchLocation.lng },
               maxDistanceKm: Number(maxDistanceKm),
             }),
           })
@@ -136,11 +142,64 @@ export function DiscoverClient({
       }
 
       await Promise.all(requests);
+      setSearchedCenter(searchLocation);
+      setMapCenter(searchLocation);
     } catch {
       setSearchError("Couldn't reach the activity discovery service");
     } finally {
       setIsSearching(false);
     }
+  }
+
+  function handleLocationSelect(selected: LatLng) {
+    setLocation({ status: "ready", lat: selected.lat, lng: selected.lng });
+    handleSearch(selected);
+  }
+
+  function handleLongPress(pressed: LatLng) {
+    handleSearch(pressed);
+  }
+
+  function distanceKm(a: LatLng, b: LatLng): number {
+    const dLat = a.lat - b.lat;
+    const dLng = a.lng - b.lng;
+    return Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+  }
+
+  async function handleSaveFromMap(point: MapPoint) {
+    const suggestion = suggestions?.find((s, i) => `s-${s.placeName}-${i}` === point.key);
+    const event = events?.find((e) => `e-${e.id}` === point.key);
+
+    const payload = suggestion
+      ? {
+          kind: "place" as const,
+          title: suggestion.title,
+          subtitle: suggestion.placeName,
+          lat: suggestion.location.lat,
+          lng: suggestion.location.lng,
+          data: suggestion as unknown as Record<string, unknown>,
+        }
+      : event
+        ? {
+            kind: "event" as const,
+            title: event.name,
+            subtitle: event.venueName,
+            lat: event.location.lat,
+            lng: event.location.lng,
+            startsAt: event.startIso,
+            data: event as unknown as Record<string, unknown>,
+          }
+        : null;
+
+    if (!payload) return;
+
+    const result = await saveActivity(payload);
+    if (result.error) {
+      toast.error("Couldn't save that", { description: result.error });
+      return;
+    }
+    setSavedKeys((prev) => new Set(prev).add(point.key));
+    toast.success("Saved for later");
   }
 
   async function handleGenerateSimilar(reference: ActivitySuggestion) {
@@ -264,16 +323,23 @@ export function DiscoverClient({
             <p className="text-sm text-destructive">{location.message}</p>
           )}
 
-          <Button onClick={handleSearch} disabled={isSearching} className="self-start">
-            {isSearching ? (
-              <Loader2Icon className="animate-spin" />
-            ) : location.status === "ready" ? (
-              <SparklesIcon />
-            ) : (
-              <MapPinIcon />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => handleSearch()} disabled={isSearching} className="self-start">
+              {isSearching ? (
+                <Loader2Icon className="animate-spin" />
+              ) : location.status === "ready" ? (
+                <SparklesIcon />
+              ) : (
+                <MapPinIcon />
+              )}
+              {location.status === "ready" ? "Find activities" : "Share location & find activities"}
+            </Button>
+            {location.status === "ready" && (
+              <div className="w-full sm:w-64">
+                <LocationSearchBox onSelect={handleLocationSelect} />
+              </div>
             )}
-            {location.status === "ready" ? "Find activities" : "Share location & find activities"}
-          </Button>
+          </div>
         </div>
 
         {searchError && <p className="text-sm text-destructive">{searchError}</p>}
@@ -281,15 +347,45 @@ export function DiscoverClient({
           <p className="text-sm text-muted-foreground">Finding more like that…</p>
         )}
 
-        {location.status === "ready" && (suggestions?.length || events?.length) ? (
-          <ActivitiesOverviewMap
-            center={{ lat: location.lat, lng: location.lng }}
-            points={[
-              ...(suggestions ?? []).map((s) => s.location),
-              ...(events ?? []).map((e) => e.location),
-            ]}
-          />
-        ) : null}
+        {location.status === "ready" && (
+          <div className="relative h-80 overflow-hidden rounded-2xl border border-border">
+            <InteractiveMap
+              center={searchedCenter ?? { lat: location.lat, lng: location.lng }}
+              points={[
+                ...(suggestions ?? []).map((s, i) => ({
+                  key: `s-${s.placeName}-${i}`,
+                  location: s.location,
+                  title: s.title,
+                  subtitle: s.placeName,
+                  category: s.category,
+                  isSaved: savedKeys.has(`s-${s.placeName}-${i}`),
+                })),
+                ...(events ?? []).map((e) => ({
+                  key: `e-${e.id}`,
+                  location: e.location,
+                  title: e.name,
+                  subtitle: e.venueName,
+                  category: "event" as const,
+                  isSaved: savedKeys.has(`e-${e.id}`),
+                })),
+              ]}
+              onBoundsChanged={(center) => setMapCenter(center)}
+              onLongPress={handleLongPress}
+              onSave={handleSaveFromMap}
+            />
+            {mapCenter && searchedCenter && distanceKm(mapCenter, searchedCenter) > 0.5 && (
+              <Button
+                size="sm"
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-md"
+                onClick={() => handleSearch(mapCenter)}
+                disabled={isSearching}
+              >
+                {isSearching && <Loader2Icon className="animate-spin" />}
+                Search this area
+              </Button>
+            )}
+          </div>
+        )}
 
         {events && events.length > 0 && (
           <div className="flex flex-col gap-3">
