@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { I18nProvider } from "@/components/i18n/i18n-provider";
@@ -22,6 +22,19 @@ export const metadata: Metadata = {
   title: "LifeFlow — Your day, planned for you",
   description:
     "LifeFlow is an AI-powered daily planner that organizes your entire day automatically, adapts when life changes, and feels like a personal assistant instead of another calendar.",
+  icons: {
+    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "LifeFlow",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4338ca",
 };
 
 // Deliberately static: no cookies()/headers() here, so the marketing page

@@ -37,7 +37,14 @@ export type NotificationType =
   | "free_time"
   | "reschedule"
   | "habit_skip"
-  | "weekly_report";
+  | "weekly_report"
+  | "task_reminder"
+  | "water_reminder"
+  | "meal_reminder"
+  | "bedtime_reminder"
+  | "goal_reminder"
+  | "finance_reminder"
+  | "calendar_reminder";
 export type ChatRole = "user" | "assistant" | "tool";
 export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimization";
 export type RescheduleTrigger = "user" | "ai" | "system";
@@ -126,12 +133,33 @@ export interface Database {
           default_lat: number | null;
           default_lng: number | null;
           visible_health_cards: string[];
+          quiet_hours_start: string | null;
+          quiet_hours_end: string | null;
+          notification_sound: boolean;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["user_settings"]["Row"]> & {
           user_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_settings"]["Row"]>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]> & {
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]>;
         Relationships: [];
       };
       schedule_items: {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarIcon, GlobeIcon, SlidersHorizontalIcon, UserIcon } from "lucide-react";
+import { BellRingIcon, CalendarIcon, GlobeIcon, SlidersHorizontalIcon, UserIcon } from "lucide-react";
 
 import {
   Card,
@@ -11,8 +11,11 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CalendarConnections } from "@/components/settings/calendar-connections";
 import { LanguageSwitcher } from "@/components/settings/language-switcher";
+import { NotificationPreferencesForm } from "@/components/settings/notification-preferences-form";
 import { PreferencesForm } from "@/components/settings/preferences-form";
+import { PushNotificationToggle } from "@/components/settings/push-notification-toggle";
 import { getDictionary } from "@/lib/i18n/get-locale";
+import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Settings — LifeFlow" };
@@ -73,6 +76,24 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <CalendarConnections connections={connections ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BellRingIcon className="size-4" /> Notifications
+          </CardTitle>
+          <CardDescription>Push notifications, categories, and quiet hours.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <PushNotificationToggle vapidPublicKey={env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? null} />
+          <NotificationPreferencesForm
+            prefs={settings?.notification_prefs ?? {}}
+            quietHoursStart={settings?.quiet_hours_start ?? null}
+            quietHoursEnd={settings?.quiet_hours_end ?? null}
+            notificationSound={settings?.notification_sound ?? true}
+          />
         </CardContent>
       </Card>
 
