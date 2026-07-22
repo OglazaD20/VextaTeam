@@ -12,6 +12,7 @@ import {
   SparklesIcon,
   TargetIcon,
   TimerIcon,
+  WalletIcon,
 } from "lucide-react";
 
 export const NAV_ITEMS = [
@@ -23,6 +24,7 @@ export const NAV_ITEMS = [
   { href: "/mood", label: "Mood", icon: SmileIcon },
   { href: "/nutrition", label: "Nutrition", icon: AppleIcon },
   { href: "/health", label: "Health", icon: HeartPulseIcon },
+  { href: "/finance", label: "Finance", icon: WalletIcon },
   { href: "/discover", label: "Discover", icon: CompassIcon },
   { href: "/focus", label: "Focus", icon: TimerIcon },
   { href: "/stats", label: "Stats", icon: CalendarClockIcon },

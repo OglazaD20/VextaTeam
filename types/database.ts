@@ -56,6 +56,9 @@ export type GoalCategory =
   | "personal"
   | "health"
   | "custom";
+export type TransactionType = "income" | "expense";
+export type BillingCycle = "weekly" | "monthly" | "yearly";
+export type AssetType = "investment" | "savings" | "property" | "other";
 
 export interface RecurrenceRule {
   freq: "daily" | "weekly" | "monthly";
@@ -597,6 +600,124 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["goal_milestones"]["Row"]>;
         Relationships: [];
       };
+      finance_settings: {
+        Row: {
+          user_id: string;
+          currency: string;
+          monthly_income_estimate: number | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_settings"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_settings"]["Row"]>;
+        Relationships: [];
+      };
+      finance_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          amount: number;
+          currency: string;
+          billing_cycle: BillingCycle;
+          category: string;
+          next_billing_date: string | null;
+          is_active: boolean;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_subscriptions"]["Row"]> & {
+          user_id: string;
+          name: string;
+          amount: number;
+          billing_cycle: BillingCycle;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_subscriptions"]["Row"]>;
+        Relationships: [];
+      };
+      transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: TransactionType;
+          amount: number;
+          currency: string;
+          category: string;
+          description: string | null;
+          occurred_at: string;
+          subscription_id: string | null;
+          receipt_storage_path: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["transactions"]["Row"]> & {
+          user_id: string;
+          type: TransactionType;
+          amount: number;
+          category: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["transactions"]["Row"]>;
+        Relationships: [];
+      };
+      finance_budgets: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          monthly_limit: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_budgets"]["Row"]> & {
+          user_id: string;
+          category: string;
+          monthly_limit: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_budgets"]["Row"]>;
+        Relationships: [];
+      };
+      finance_loans: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          principal_amount: number;
+          remaining_balance: number;
+          interest_rate_pct: number | null;
+          monthly_payment: number | null;
+          start_date: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_loans"]["Row"]> & {
+          user_id: string;
+          name: string;
+          principal_amount: number;
+          remaining_balance: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_loans"]["Row"]>;
+        Relationships: [];
+      };
+      finance_assets: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          asset_type: AssetType;
+          current_value: number;
+          currency: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_assets"]["Row"]> & {
+          user_id: string;
+          name: string;
+          asset_type: AssetType;
+          current_value: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_assets"]["Row"]>;
+        Relationships: [];
+      };
       task_subtasks: {
         Row: {
           id: string;
@@ -714,6 +835,24 @@ export interface Database {
           signals: Record<string, unknown>;
         };
         Update: Partial<Database["public"]["Tables"]["coach_insights"]["Row"]>;
+        Relationships: [];
+      };
+      finance_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_insights"]["Row"]> & {
+          user_id: string;
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_insights"]["Row"]>;
         Relationships: [];
       };
     };
