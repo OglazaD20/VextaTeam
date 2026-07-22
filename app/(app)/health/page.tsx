@@ -114,7 +114,7 @@ export default async function HealthPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {isVisible("sleep") && (
           <HealthMetricCard
             icon={MoonIcon}
