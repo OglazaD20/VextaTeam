@@ -44,8 +44,13 @@ export type NotificationType =
   | "bedtime_reminder"
   | "goal_reminder"
   | "finance_reminder"
-  | "calendar_reminder";
+  | "calendar_reminder"
+  | "morning_summary"
+  | "workout_reminder"
+  | "coach_suggestion"
+  | "discover_recommendation";
 export type ChatRole = "user" | "assistant" | "tool";
+export type ReminderFrequency = "normal" | "reduced" | "minimal";
 export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimization";
 export type RescheduleTrigger = "user" | "ai" | "system";
 export type Theme = "light" | "dark" | "system";
@@ -136,6 +141,8 @@ export interface Database {
           quiet_hours_start: string | null;
           quiet_hours_end: string | null;
           notification_sound: boolean;
+          vibration: boolean;
+          reminder_frequency: ReminderFrequency;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["user_settings"]["Row"]> & {

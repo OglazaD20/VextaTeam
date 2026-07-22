@@ -93,6 +93,8 @@ export default async function SettingsPage() {
             quietHoursStart={settings?.quiet_hours_start ?? null}
             quietHoursEnd={settings?.quiet_hours_end ?? null}
             notificationSound={settings?.notification_sound ?? true}
+            vibration={settings?.vibration ?? true}
+            reminderFrequency={settings?.reminder_frequency ?? "normal"}
           />
         </CardContent>
       </Card>

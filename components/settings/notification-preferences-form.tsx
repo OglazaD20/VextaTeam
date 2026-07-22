@@ -8,20 +8,31 @@ import { updateNotificationPrefs, updateNotificationSettings } from "@/app/(app)
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { NOTIFICATION_CATEGORIES, isNotificationEnabled, type NotificationPrefs } from "@/lib/notifications/preferences";
-import type { NotificationType } from "@/types/database";
+import type { NotificationType, ReminderFrequency } from "@/types/database";
+
+const FREQUENCY_LABEL: Record<ReminderFrequency, string> = {
+  normal: "Normal",
+  reduced: "Reduced — fewer repeats",
+  minimal: "Minimal — deadlines only",
+};
 
 export function NotificationPreferencesForm({
   prefs,
   quietHoursStart,
   quietHoursEnd,
   notificationSound,
+  vibration,
+  reminderFrequency,
 }: {
   prefs: NotificationPrefs;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   notificationSound: boolean;
+  vibration: boolean;
+  reminderFrequency: ReminderFrequency;
 }) {
   const [enabled, setEnabled] = React.useState<Record<NotificationType, boolean>>(() =>
     Object.fromEntries(
@@ -31,6 +42,8 @@ export function NotificationPreferencesForm({
   const [quietStart, setQuietStart] = React.useState(quietHoursStart?.slice(0, 5) ?? "");
   const [quietEnd, setQuietEnd] = React.useState(quietHoursEnd?.slice(0, 5) ?? "");
   const [sound, setSound] = React.useState(notificationSound);
+  const [vibrate, setVibrate] = React.useState(vibration);
+  const [frequency, setFrequency] = React.useState<ReminderFrequency>(reminderFrequency);
   const [isPending, startTransition] = React.useTransition();
 
   function toggleCategory(type: NotificationType, checked: boolean) {
@@ -48,6 +61,8 @@ export function NotificationPreferencesForm({
         quietHoursStart: quietStart || null,
         quietHoursEnd: quietEnd || null,
         notificationSound: sound,
+        vibration: vibrate,
+        reminderFrequency: frequency,
       });
       if (result.error) toast.error("Couldn't save that", { description: result.error });
       else toast.success("Saved");
@@ -90,6 +105,29 @@ export function NotificationPreferencesForm({
             Notification sound
           </Label>
           <Switch id="notif-sound" checked={sound} onCheckedChange={setSound} />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notif-vibration" className="font-normal">
+            Vibration
+          </Label>
+          <Switch id="notif-vibration" checked={vibrate} onCheckedChange={setVibrate} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="notif-frequency">Reminder frequency</Label>
+          <Select value={frequency} onValueChange={(v) => setFrequency(v as ReminderFrequency)}>
+            <SelectTrigger id="notif-frequency">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(FREQUENCY_LABEL) as ReminderFrequency[]).map((value) => (
+                <SelectItem key={value} value={value}>
+                  {FREQUENCY_LABEL[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <button

@@ -5,6 +5,8 @@ import { discoverActivities } from "@/lib/activities/discover";
 import { ACTIVITY_CATEGORIES } from "@/lib/activities/geoapify-client";
 import { createClient } from "@/lib/supabase/server";
 import { getLocale } from "@/lib/i18n/get-locale";
+import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
+import { sendPushToUser } from "@/lib/notifications/push";
 
 const categoryEnum = z.enum(
   Object.keys(ACTIVITY_CATEGORIES) as [keyof typeof ACTIVITY_CATEGORIES],
@@ -49,6 +51,28 @@ export async function POST(request: Request) {
       filters: parsed.data,
       results: suggestions as unknown as Record<string, unknown>[],
     });
+
+    // This request is normally answered while the user is watching the
+    // Discover page, but the category toggle lets them opt in to a push too
+    // (e.g. they navigated away, or installed LifeFlow as a PWA and want a
+    // ping when a search they kicked off finishes).
+    if (suggestions.length > 0) {
+      const { data: notifSettings } = await supabase
+        .from("user_settings")
+        .select("notification_prefs, reminder_frequency")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).single();
+      if (
+        isNotificationEnabled(notifSettings?.notification_prefs, "discover_recommendation") &&
+        isNotificationDueForFrequency("discover_recommendation", notifSettings?.reminder_frequency)
+      ) {
+        await sendPushToUser(supabase, user.id, profile?.timezone ?? "UTC", {
+          title: "New Discover recommendations",
+          body: `Found ${suggestions.length} suggestion${suggestions.length === 1 ? "" : "s"} nearby.`,
+        });
+      }
+    }
 
     return NextResponse.json({ data: suggestions });
   } catch (error) {

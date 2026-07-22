@@ -27,6 +27,7 @@ self.addEventListener("push", (event) => {
     badge: "/icon-192.png",
     data: { url: payload.url || "/today" },
     tag: payload.tag,
+    vibrate: Array.isArray(payload.vibrate) ? payload.vibrate : undefined,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

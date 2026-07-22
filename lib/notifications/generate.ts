@@ -2,10 +2,10 @@ import { getTodayRangeUtc, getWakingWindowUtc } from "@/lib/scheduling/day-range
 import { computeFreeGaps } from "@/lib/scheduling/gaps";
 import { computeGoalProgressPct } from "@/lib/goals/progress";
 import { getTodayKey } from "@/lib/habits/today-key";
-import { isNotificationEnabled } from "@/lib/notifications/preferences";
+import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
 import { sendPushToUser } from "@/lib/notifications/push";
 import type { createClient } from "@/lib/supabase/server";
-import type { NotificationType } from "@/types/database";
+import type { NotificationType, ReminderFrequency } from "@/types/database";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -20,6 +20,8 @@ const GOAL_DEADLINE_WINDOW_DAYS = 3;
 const FINANCE_DUE_WINDOW_DAYS = 3;
 const WATER_REMINDER_HOUR = 14; // 2pm local
 const WATER_REMINDER_FRACTION = 0.5;
+const MORNING_SUMMARY_WINDOW_MINUTES = 120;
+const WORKOUT_REMINDER_HOUR = 19; // 7pm local
 
 async function alreadyNotifiedRecently(
   supabase: SupabaseServerClient,
@@ -49,9 +51,11 @@ async function notifyUser(
   userId: string,
   timeZone: string,
   prefs: Record<string, boolean>,
+  frequency: ReminderFrequency,
   notification: { type: NotificationType; title: string; body: string; relatedItemId?: string },
 ): Promise<void> {
   if (!isNotificationEnabled(prefs, notification.type)) return;
+  if (!isNotificationDueForFrequency(notification.type, frequency)) return;
 
   await supabase.from("notifications").insert({
     user_id: userId,
@@ -88,7 +92,7 @@ export async function generateContextualNotifications(
   const [{ data: settings }, { data: todayItems }] = await Promise.all([
     supabase
       .from("user_settings")
-      .select("wake_time, sleep_time, notification_prefs")
+      .select("wake_time, sleep_time, notification_prefs, reminder_frequency")
       .eq("user_id", userId)
       .single(),
     supabase
@@ -102,14 +106,38 @@ export async function generateContextualNotifications(
 
   const items = todayItems ?? [];
   const prefs = settings?.notification_prefs ?? {};
+  const frequency: ReminderFrequency = settings?.reminder_frequency ?? "normal";
+  // "reduced" spaces out the frequent/ambient reminders without silencing
+  // them outright — "minimal" instead drops the ambient ones entirely (see
+  // isNotificationDueForFrequency), so only widen the repeat window here.
+  const dedupeHours = DEDUPE_WINDOW_HOURS * (frequency === "reduced" ? 2 : 1);
 
-  // 1. Free time remaining today.
   const dayWindow = getWakingWindowUtc(
     timeZone,
     settings?.wake_time ?? "07:00",
     settings?.sleep_time ?? "23:00",
     now,
   );
+
+  // 0. Morning summary, shortly after the user's wake time.
+  const minutesSinceWake = (nowMs - dayWindow.start.getTime()) / 60_000;
+  if (
+    minutesSinceWake >= 0 &&
+    minutesSinceWake <= MORNING_SUMMARY_WINDOW_MINUTES &&
+    !(await alreadyNotifiedRecently(supabase, userId, "morning_summary", null, 20))
+  ) {
+    const scheduledCount = items.filter((item) => item.scheduled_start).length;
+    await notifyUser(supabase, userId, timeZone, prefs, frequency, {
+      type: "morning_summary",
+      title: "Good morning",
+      body:
+        scheduledCount > 0
+          ? `You have ${scheduledCount} item${scheduledCount === 1 ? "" : "s"} scheduled today.`
+          : "Nothing scheduled yet today — open LifeFlow to plan your day.",
+    });
+  }
+
+  // 1. Free time remaining today.
   if (nowMs < dayWindow.end.getTime()) {
     const remainingWindow = { start: now, end: dayWindow.end };
     const busy = items
@@ -125,9 +153,9 @@ export async function generateContextualNotifications(
 
     if (
       freeMinutes >= FREE_TIME_THRESHOLD_MINUTES &&
-      !(await alreadyNotifiedRecently(supabase, userId, "free_time", null, DEDUPE_WINDOW_HOURS))
+      !(await alreadyNotifiedRecently(supabase, userId, "free_time", null, dedupeHours))
     ) {
-      await notifyUser(supabase, userId, timeZone, prefs, {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
         type: "free_time",
         title: "You have free time today",
         body: `You still have about ${Math.round(freeMinutes)} minutes free today.`,
@@ -155,10 +183,10 @@ export async function generateContextualNotifications(
         userId,
         "break_reminder",
         inProgress.id,
-        DEDUPE_WINDOW_HOURS,
+        dedupeHours,
       ))
     ) {
-      await notifyUser(supabase, userId, timeZone, prefs, {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
         type: "break_reminder",
         title: "Take a break",
         body: `"${inProgress.title}" is a long block — consider stepping away for a few minutes.`,
@@ -213,7 +241,7 @@ export async function generateContextualNotifications(
       );
 
       for (const habit of toNotify) {
-        await notifyUser(supabase, userId, timeZone, prefs, {
+        await notifyUser(supabase, userId, timeZone, prefs, frequency, {
           type: "habit_skip",
           title: "Don't break your streak",
           body: `You haven't logged "${habit.name}" yet today.`,
@@ -238,9 +266,9 @@ export async function generateContextualNotifications(
       new Date(item.scheduled_start!).getTime() - nowMs <= UPCOMING_TASK_WINDOW_MINUTES * 60_000,
   );
 
-  if (upcomingTask && !(await alreadyNotifiedRecently(supabase, userId, "task_reminder", upcomingTask.id, DEDUPE_WINDOW_HOURS))) {
+  if (upcomingTask && !(await alreadyNotifiedRecently(supabase, userId, "task_reminder", upcomingTask.id, dedupeHours))) {
     const minutesAway = Math.round((new Date(upcomingTask.scheduled_start!).getTime() - nowMs) / 60_000);
-    await notifyUser(supabase, userId, timeZone, prefs, {
+    await notifyUser(supabase, userId, timeZone, prefs, frequency, {
       type: "task_reminder",
       title: "Coming up",
       body: `"${upcomingTask.title}" starts in ${Math.max(1, minutesAway)} min.`,
@@ -250,10 +278,10 @@ export async function generateContextualNotifications(
 
   if (
     upcomingCalendarEvent &&
-    !(await alreadyNotifiedRecently(supabase, userId, "calendar_reminder", upcomingCalendarEvent.id, DEDUPE_WINDOW_HOURS))
+    !(await alreadyNotifiedRecently(supabase, userId, "calendar_reminder", upcomingCalendarEvent.id, dedupeHours))
   ) {
     const minutesAway = Math.round((new Date(upcomingCalendarEvent.scheduled_start!).getTime() - nowMs) / 60_000);
-    await notifyUser(supabase, userId, timeZone, prefs, {
+    await notifyUser(supabase, userId, timeZone, prefs, frequency, {
       type: "calendar_reminder",
       title: "Calendar event soon",
       body: `"${upcomingCalendarEvent.title}" starts in ${Math.max(1, minutesAway)} min.`,
@@ -269,7 +297,7 @@ export async function generateContextualNotifications(
     minutesToBedtime <= BEDTIME_WINDOW_MINUTES &&
     !(await alreadyNotifiedRecently(supabase, userId, "bedtime_reminder", null, 12))
   ) {
-    await notifyUser(supabase, userId, timeZone, prefs, {
+    await notifyUser(supabase, userId, timeZone, prefs, frequency, {
       type: "bedtime_reminder",
       title: "Bedtime coming up",
       body: `Your usual bedtime (${sleepTime.slice(0, 5)}) is in about ${Math.round(minutesToBedtime)} min.`,
@@ -277,7 +305,7 @@ export async function generateContextualNotifications(
   }
 
   // 6. Water intake behind goal in the afternoon/evening.
-  if (nowInZoneHour >= WATER_REMINDER_HOUR && !(await alreadyNotifiedRecently(supabase, userId, "water_reminder", null, DEDUPE_WINDOW_HOURS))) {
+  if (nowInZoneHour >= WATER_REMINDER_HOUR && !(await alreadyNotifiedRecently(supabase, userId, "water_reminder", null, dedupeHours))) {
     const { start: todayStart, end: todayEnd } = getTodayRangeUtc(timeZone, now);
     const [{ data: waterLogs }, { data: nutritionSettings }] = await Promise.all([
       supabase
@@ -291,7 +319,7 @@ export async function generateContextualNotifications(
     const totalMl = (waterLogs ?? []).reduce((sum, w) => sum + w.amount_ml, 0);
     const goalMl = nutritionSettings?.water_goal_ml ?? 2000;
     if (totalMl < goalMl * WATER_REMINDER_FRACTION) {
-      await notifyUser(supabase, userId, timeZone, prefs, {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
         type: "water_reminder",
         title: "Drink some water",
         body: `You've had ${totalMl}ml of your ${goalMl}ml goal so far today.`,
@@ -305,7 +333,7 @@ export async function generateContextualNotifications(
     { hour: 21, meal: "dinner" },
   ];
   const dueMeal = mealWindows.find((w) => nowInZoneHour === w.hour);
-  if (dueMeal && !(await alreadyNotifiedRecently(supabase, userId, "meal_reminder", null, DEDUPE_WINDOW_HOURS))) {
+  if (dueMeal && !(await alreadyNotifiedRecently(supabase, userId, "meal_reminder", null, dedupeHours))) {
     const { start: todayStart, end: todayEnd } = getTodayRangeUtc(timeZone, now);
     const { data: mealLogs } = await supabase
       .from("food_logs")
@@ -317,10 +345,32 @@ export async function generateContextualNotifications(
       .limit(1);
 
     if (!mealLogs || mealLogs.length === 0) {
-      await notifyUser(supabase, userId, timeZone, prefs, {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
         type: "meal_reminder",
         title: `Did you have ${dueMeal.meal}?`,
         body: `You haven't logged ${dueMeal.meal} yet today.`,
+      });
+    }
+  }
+
+  // 7b. No workout logged by evening.
+  if (
+    nowInZoneHour === WORKOUT_REMINDER_HOUR &&
+    !(await alreadyNotifiedRecently(supabase, userId, "workout_reminder", null, dedupeHours))
+  ) {
+    const todayKey = getTodayKey(timeZone, now);
+    const { data: healthToday } = await supabase
+      .from("health_metrics")
+      .select("exercise_minutes")
+      .eq("user_id", userId)
+      .eq("logged_for_date", todayKey)
+      .maybeSingle();
+
+    if (!healthToday?.exercise_minutes) {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
+        type: "workout_reminder",
+        title: "Did you work out today?",
+        body: "You haven't logged a workout yet today.",
       });
     }
   }
@@ -360,7 +410,7 @@ export async function generateContextualNotifications(
       });
       if (progressPct >= 80) continue;
 
-      await notifyUser(supabase, userId, timeZone, prefs, {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
         type: "goal_reminder",
         title: "Goal deadline approaching",
         body: `"${goal.title}" is due in ${Math.max(0, Math.round(daysLeft))} day(s) and ${progressPct}% done.`,
@@ -392,7 +442,7 @@ export async function generateContextualNotifications(
       if (daysLeft < 0 || daysLeft > FINANCE_DUE_WINDOW_DAYS) continue;
       if (recentlyNotifiedNames.has(sub.name)) continue;
 
-      await notifyUser(supabase, userId, timeZone, prefs, {
+      await notifyUser(supabase, userId, timeZone, prefs, frequency, {
         type: "finance_reminder",
         title: "Bill due soon",
         body: `"${sub.name}" is due in ${Math.max(0, Math.round(daysLeft))} day(s).`,

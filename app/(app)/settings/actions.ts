@@ -196,12 +196,16 @@ const notificationSettingsSchema = z.object({
   quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
   quietHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
   notificationSound: z.boolean(),
+  vibration: z.boolean(),
+  reminderFrequency: z.enum(["normal", "reduced", "minimal"]),
 });
 
 export async function updateNotificationSettings(input: {
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   notificationSound: boolean;
+  vibration: boolean;
+  reminderFrequency: "normal" | "reduced" | "minimal";
 }): Promise<ActionResult> {
   const parsed = notificationSettingsSchema.safeParse(input);
   if (!parsed.success) {
@@ -223,6 +227,8 @@ export async function updateNotificationSettings(input: {
       quiet_hours_start: parsed.data.quietHoursStart,
       quiet_hours_end: parsed.data.quietHoursEnd,
       notification_sound: parsed.data.notificationSound,
+      vibration: parsed.data.vibration,
+      reminder_frequency: parsed.data.reminderFrequency,
     })
     .eq("user_id", user.id);
 

@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { generateCoaching } from "@/lib/ai/generate-coaching";
 import { getLocale } from "@/lib/i18n/get-locale";
+import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
+import { sendPushToUser } from "@/lib/notifications/push";
 import {
   computeBurnoutSignal,
   computeHydrationTimingSignal,
@@ -225,6 +227,21 @@ export async function POST(request: Request) {
       insights: result.insights,
       signals,
     });
+
+    const { data: notifSettings } = await supabase
+      .from("user_settings")
+      .select("notification_prefs, reminder_frequency")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (
+      isNotificationEnabled(notifSettings?.notification_prefs, "coach_suggestion") &&
+      isNotificationDueForFrequency("coach_suggestion", notifSettings?.reminder_frequency)
+    ) {
+      await sendPushToUser(supabase, user.id, timeZone, {
+        title: "New AI Coach insight",
+        body: result.headline,
+      });
+    }
 
     return NextResponse.json({ data: result });
   } catch (error) {

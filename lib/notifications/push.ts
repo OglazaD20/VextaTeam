@@ -55,7 +55,10 @@ export interface PushPayload {
   body: string;
   url?: string;
   tag?: string;
+  vibrate?: number[];
 }
+
+const DEFAULT_VIBRATE_PATTERN = [200, 100, 200];
 
 /**
  * Best-effort: sends a Web Push notification to every subscribed
@@ -74,7 +77,7 @@ export async function sendPushToUser(
 
     const { data: settings } = await supabase
       .from("user_settings")
-      .select("quiet_hours_start, quiet_hours_end")
+      .select("quiet_hours_start, quiet_hours_end, vibration")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -89,6 +92,11 @@ export async function sendPushToUser(
 
     if (!subscriptions || subscriptions.length === 0) return;
 
+    const outgoingPayload: PushPayload = {
+      ...payload,
+      vibrate: (settings?.vibration ?? true) ? (payload.vibrate ?? DEFAULT_VIBRATE_PATTERN) : [],
+    };
+
     await Promise.all(
       subscriptions.map(async (sub) => {
         try {
@@ -97,7 +105,7 @@ export async function sendPushToUser(
               endpoint: sub.endpoint,
               keys: { p256dh: sub.p256dh, auth: sub.auth },
             },
-            JSON.stringify(payload),
+            JSON.stringify(outgoingPayload),
           );
         } catch (error) {
           const statusCode = (error as { statusCode?: number }).statusCode;
