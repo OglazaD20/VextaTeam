@@ -31,12 +31,14 @@ function SortableItem({
   selectable,
   selected,
   onToggleSelected,
+  timeZone,
 }: {
   item: Tables<"schedule_items">;
   allTags: string[];
   selectable: boolean;
   selected: boolean;
   onToggleSelected: () => void;
+  timeZone: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -59,6 +61,7 @@ function SortableItem({
         selectable={selectable}
         selected={selected}
         onToggleSelected={onToggleSelected}
+        timeZone={timeZone}
       />
     </div>
   );
@@ -67,9 +70,11 @@ function SortableItem({
 export function UnscheduledList({
   items,
   allTags = [],
+  timeZone,
 }: {
   items: Tables<"schedule_items">[];
   allTags?: string[];
+  timeZone: string;
 }) {
   const [orderedItems, setOrderedItems] = React.useState(items);
   const [syncedItems, setSyncedItems] = React.useState(items);
@@ -167,6 +172,7 @@ export function UnscheduledList({
                 selectable={isSelecting}
                 selected={selectedIds.has(item.id)}
                 onToggleSelected={() => toggleItemSelected(item.id)}
+                timeZone={timeZone}
               />
             ))}
           </div>

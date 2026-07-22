@@ -26,12 +26,19 @@ export async function generateRecurringInstances(
     return 0;
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", template.user_id)
+    .single();
+  const timeZone = profile?.timezone ?? "UTC";
+
   const anchor = new Date(template.scheduled_start);
   const durationMs = template.scheduled_end
     ? new Date(template.scheduled_end).getTime() - anchor.getTime()
     : (template.estimated_duration_minutes ?? 30) * 60_000;
 
-  const occurrences = generateOccurrences(anchor, template.recurrence_rule, throughDate);
+  const occurrences = generateOccurrences(anchor, template.recurrence_rule, throughDate, timeZone);
 
   const { data: existing } = await supabase
     .from("schedule_items")

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ChevronDownIcon, Loader2Icon, SparklesIcon } from "lucide-react";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { toast } from "sonner";
 
 import { createScheduleItem, getTaskDetails, updateScheduleItem } from "@/app/(app)/today/actions";
@@ -84,6 +85,7 @@ export function TaskEditorDialog({
   allTags,
   onSaved,
   defaultDate,
+  timeZone,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -92,6 +94,8 @@ export function TaskEditorDialog({
   onSaved?: () => void;
   /** "YYYY-MM-DD" or a full "YYYY-MM-DDTHH:mm:ss" to prefill when creating from a specific day/time. */
   defaultDate?: string;
+  /** The user's configured IANA timezone — every start-time field here is entered/displayed in this zone, not the browser's own local zone. */
+  timeZone: string;
 }) {
   const isEditMode = !!item;
   const [isPending, startTransition] = React.useTransition();
@@ -155,7 +159,7 @@ export function TaskEditorDialog({
 
     if (task.scheduled_start) {
       setAiSchedule(false);
-      setStartLocal(toLocalInputValue(new Date(task.scheduled_start)));
+      setStartLocal(toLocalInputValue(toZonedTime(new Date(task.scheduled_start), timeZone)));
     } else {
       setAiSchedule(true);
     }
@@ -178,7 +182,7 @@ export function TaskEditorDialog({
       setAttachments(result.data.attachments as Tables<"task_attachments">[]);
       setSubtasks(result.data.subtasks);
     }
-  }, []);
+  }, [timeZone]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -230,7 +234,7 @@ export function TaskEditorDialog({
 
       if (data.scheduledStart) {
         setAiSchedule(false);
-        setStartLocal(toLocalInputValue(new Date(data.scheduledStart)));
+        setStartLocal(toLocalInputValue(toZonedTime(new Date(data.scheduledStart), timeZone)));
       } else if (data.dueAt) {
         setAiSchedule(true);
         setDueDate(data.dueAt.slice(0, 10));
@@ -270,7 +274,7 @@ export function TaskEditorDialog({
       if (durationMinutes) payload.set("estimatedDurationMinutes", durationMinutes);
       if (dueDate) payload.set("dueAt", new Date(`${dueDate}T23:59:59`).toISOString());
     } else {
-      const start = new Date(startLocal);
+      const start = fromZonedTime(new Date(startLocal), timeZone);
       const duration = Number(durationMinutes);
       const end = new Date(start.getTime() + duration * 60_000);
       payload.set("estimatedDurationMinutes", String(duration));

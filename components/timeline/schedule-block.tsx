@@ -41,9 +41,10 @@ import type { Tables } from "@/types/database";
 const SWIPE_COMPLETE_THRESHOLD_PX = 88;
 const LONG_PRESS_MS = 500;
 
-function formatTimeRange(start: string | null, end: string | null) {
+function formatTimeRange(start: string | null, end: string | null, timeZone: string) {
   if (!start) return null;
   const formatter = new Intl.DateTimeFormat(undefined, {
+    timeZone,
     hour: "numeric",
     minute: "2-digit",
   });
@@ -66,6 +67,7 @@ export function ScheduleBlock({
   selectable = false,
   selected = false,
   onToggleSelected,
+  timeZone,
 }: {
   item: Tables<"schedule_items">;
   allTags?: string[];
@@ -77,6 +79,7 @@ export function ScheduleBlock({
   selectable?: boolean;
   selected?: boolean;
   onToggleSelected?: () => void;
+  timeZone: string;
 }) {
   const [, startTransition] = useTransition();
   const [isEditorOpen, setEditorOpen] = React.useState(false);
@@ -292,7 +295,7 @@ export function ScheduleBlock({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
             {item.scheduled_start ? (
-              <span>{formatTimeRange(item.scheduled_start, item.scheduled_end)}</span>
+              <span>{formatTimeRange(item.scheduled_start, item.scheduled_end, timeZone)}</span>
             ) : (
               <span>
                 {item.estimated_duration_minutes
@@ -360,6 +363,7 @@ export function ScheduleBlock({
         onOpenChange={setEditorOpen}
         item={item}
         allTags={allTags}
+        timeZone={timeZone}
       />
       {item.scheduled_start && (
         <MoveToDayDialog open={isMoveOpen} onOpenChange={setMoveOpen} item={item} />

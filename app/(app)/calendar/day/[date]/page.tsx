@@ -112,6 +112,7 @@ export default async function CalendarDayPage({
         nextKey={dateKey(addDays(localDate, 1))}
         monthKey={monthKey}
         allTags={allTags}
+        timeZone={timeZone}
       />
       <QuickAccessRow />
       <TimelineGrid
@@ -120,7 +121,7 @@ export default async function CalendarDayPage({
         timeZone={timeZone}
         allTags={allTags}
       />
-      <UnscheduledList items={unscheduled ?? []} allTags={allTags} />
+      <UnscheduledList items={unscheduled ?? []} allTags={allTags} timeZone={timeZone} />
       <ArchivedSection items={archived ?? []} />
     </div>
   );

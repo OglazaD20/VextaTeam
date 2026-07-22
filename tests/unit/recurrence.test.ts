@@ -66,4 +66,24 @@ describe("generateOccurrences", () => {
       expect(occurrence.getMinutes()).toBe(30);
     }
   });
+
+  it("matches byWeekday against the owning user's local calendar day, not the server's UTC day", () => {
+    // 2026-01-06T07:00:00Z is Monday Jan 5, 23:00 in America/Los_Angeles
+    // (UTC-8) — a plain UTC .getDay() would read this as Tuesday and skip
+    // the user's actual Monday entirely.
+    const anchor = new Date("2026-01-06T07:00:00.000Z");
+    const throughDate = new Date("2026-01-13T07:00:00.000Z");
+
+    const result = generateOccurrences(
+      anchor,
+      { freq: "weekly", interval: 1, byWeekday: [1] },
+      throughDate,
+      "America/Los_Angeles",
+    );
+
+    expect(result.map((r) => r.toISOString())).toEqual([
+      "2026-01-06T07:00:00.000Z",
+      "2026-01-13T07:00:00.000Z",
+    ]);
+  });
 });

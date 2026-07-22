@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { fromZonedTime } from "date-fns-tz";
 
 import { moveTaskToDay } from "@/app/(app)/today/actions";
 import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
@@ -161,7 +162,7 @@ export function TimelineGrid({
         const item = items.find((i) => i.id === current.itemId);
         if (item && !unchanged) {
           const [year, month, day] = dateKey.split("-").map(Number);
-          const dayStart = new Date(year, month - 1, day);
+          const dayStart = fromZonedTime(new Date(year, month - 1, day), timeZone);
           const newStart = new Date(dayStart.getTime() + current.previewStartMinutes * 60_000);
           const newEnd = new Date(
             dayStart.getTime() + (current.previewStartMinutes + current.previewDurationMinutes) * 60_000,
@@ -179,7 +180,7 @@ export function TimelineGrid({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [drag, items, dateKey]);
+  }, [drag, items, dateKey, timeZone]);
 
   function handleGridClick(event: React.MouseEvent) {
     if (event.target !== event.currentTarget) return;
@@ -245,6 +246,7 @@ export function TimelineGrid({
         item={editingItem}
         allTags={allTags}
         defaultDate={createAt ?? dateKey}
+        timeZone={timeZone}
       />
     </div>
   );

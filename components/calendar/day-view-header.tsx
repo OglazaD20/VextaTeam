@@ -23,6 +23,7 @@ export function DayViewHeader({
   nextKey,
   monthKey,
   allTags = [],
+  timeZone,
 }: {
   dateKey: string;
   label: string;
@@ -30,6 +31,7 @@ export function DayViewHeader({
   nextKey: string;
   monthKey: string;
   allTags?: string[];
+  timeZone: string;
 }) {
   const router = useRouter();
   const [isEditorOpen, setEditorOpen] = React.useState(false);
@@ -119,6 +121,7 @@ export function DayViewHeader({
         onOpenChange={setEditorOpen}
         allTags={allTags}
         defaultDate={dateKey}
+        timeZone={timeZone}
       />
     </div>
   );
