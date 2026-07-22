@@ -21,14 +21,23 @@ function CategoryChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={isSelected}
       className={cn(
-        "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors",
+        "flex items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-1.5 text-sm font-medium",
+        "transition-all duration-200 ease-out active:scale-[0.97]",
         isSelected
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border text-muted-foreground hover:border-primary hover:text-foreground",
+          ? "border-transparent bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+          : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-foreground",
       )}
     >
-      <span>{icon}</span>
+      <span
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-full text-[13px] transition-colors",
+          isSelected ? "bg-primary-foreground/15" : "bg-muted",
+        )}
+      >
+        {icon}
+      </span>
       {label}
     </button>
   );

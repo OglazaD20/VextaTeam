@@ -10,6 +10,7 @@ import {
   type ActivityCategory,
   type PlaceCandidate,
 } from "./geoapify-client";
+import { getOpeningStatus } from "./opening-hours";
 import { getCurrentWeather, type WeatherSnapshot } from "./weather-client";
 
 export interface DiscoverFilters {
@@ -42,6 +43,8 @@ export interface ActivitySuggestion {
   category: ActivityCategory;
   openingHours: string | null;
   website: string | null;
+  isOpenNow: boolean | null;
+  closesAt: string | null;
 }
 
 const suggestionsSchema = z.object({
@@ -66,9 +69,21 @@ function rankedCandidates(
   const excluded = new Set(excludePlaceNames.map((n) => n.toLowerCase()));
   return candidates
     .filter((place) => !excluded.has(place.name.toLowerCase()))
-    .map((place) => ({ place, distanceKm: haversineDistanceKm(location, place.location) }))
+    .map((place) => ({
+      place,
+      distanceKm: haversineDistanceKm(location, place.location),
+      opening: getOpeningStatus(place.openingHours),
+    }))
     .filter((c) => c.distanceKm <= maxDistanceKm)
-    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .sort((a, b) => {
+      // Open (or unknown-hours) places rank ahead of confirmed-closed ones —
+      // the AI still makes the final call, but this keeps the closed tail
+      // out of the top candidates it sees first.
+      const aClosed = a.opening.isOpenNow === false ? 1 : 0;
+      const bClosed = b.opening.isOpenNow === false ? 1 : 0;
+      if (aClosed !== bClosed) return aClosed - bClosed;
+      return a.distanceKm - b.distanceKm;
+    })
     .slice(0, 40);
 }
 
@@ -102,8 +117,12 @@ export async function discoverActivities(
           "place candidates provided — never invent a place, address, or distance. Pick as many good " +
           "candidates as reasonably fit the user's filters and current weather — aim for 12 to 20 when " +
           "there are enough good options, don't pad the list with weak or redundant picks just to hit " +
-          "that range (avoid outdoor picks in rain, prefer them in good weather). Write a short, vivid " +
-          "one-sentence pitch per suggestion, in the " +
+          "that range (avoid outdoor picks in rain, prefer them in good weather). Each candidate has " +
+          "isOpenNow (true/false/null if hours are unknown) and closesAt (today's closing time, when " +
+          "open). Strongly prefer candidates that are open now — only include one that's currently closed " +
+          "if there's no good open alternative among the candidates that fits the filters, and if you do, " +
+          "say so plainly in the pitch (e.g. \"closed now, reopens tomorrow\") — never imply a closed place " +
+          "is open. Write a short, vivid one-sentence pitch per suggestion, in the " +
           "style of \"Go for a sunset walk in Łazienki Park.\" Reference each pick by its candidateIndex " +
           "in the provided list." +
           (filters.similarTo
@@ -120,6 +139,8 @@ export async function discoverActivities(
             name: c.place.name,
             category: c.place.category,
             distanceKm: c.distanceKm,
+            isOpenNow: c.opening.isOpenNow,
+            closesAt: c.opening.closesAt,
           })),
           weather,
           filters: {
@@ -198,6 +219,8 @@ export async function discoverActivities(
         category: inferActivityCategory(candidate.place.category, filters.categories),
         openingHours: candidate.place.openingHours,
         website: candidate.place.website,
+        isOpenNow: candidate.opening.isOpenNow,
+        closesAt: candidate.opening.closesAt,
       };
     });
 }

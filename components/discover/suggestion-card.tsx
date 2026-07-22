@@ -1,7 +1,16 @@
 "use client";
 
 import { useTransition } from "react";
-import { ClockIcon, MapPinIcon, NavigationIcon, PlusIcon, Share2Icon, SparklesIcon, StarIcon } from "lucide-react";
+import {
+  ClockIcon,
+  ExternalLinkIcon,
+  MapPinIcon,
+  NavigationIcon,
+  PlusIcon,
+  Share2Icon,
+  SparklesIcon,
+  StarIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { addSuggestionToSchedule, saveActivity } from "@/app/(app)/discover/actions";
@@ -12,6 +21,7 @@ import { shareOrCopy } from "@/lib/activities/share";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ActivitySuggestion } from "@/lib/activities/discover";
+import { cn } from "@/lib/utils";
 
 const COST_LABEL: Record<ActivitySuggestion["costTier"], string> = {
   free: "Free",
@@ -77,6 +87,8 @@ export function SuggestionCard({
     });
   }
 
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${suggestion.location.lat},${suggestion.location.lng}`;
+
   async function handleShare() {
     const result = await shareOrCopy({
       title: suggestion.title,
@@ -116,11 +128,22 @@ export function SuggestionCard({
         </span>
       </div>
 
-      {suggestion.openingHours && (
-        <p className="text-xs text-muted-foreground">Hours: {suggestion.openingHours}</p>
-      )}
-
       <div className="flex flex-wrap items-center gap-1.5">
+        {suggestion.isOpenNow !== null && (
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px]",
+              suggestion.isOpenNow ? "border-success/30 text-success" : "border-destructive/30 text-destructive",
+            )}
+          >
+            {suggestion.isOpenNow
+              ? suggestion.closesAt
+                ? `Open · closes ${suggestion.closesAt}`
+                : "Open now"
+              : "Closed now"}
+          </Badge>
+        )}
         <Badge variant="outline" className="text-[10px]">
           {COST_LABEL[suggestion.costTier]}
         </Badge>
@@ -145,6 +168,11 @@ export function SuggestionCard({
         </Button>
         <Button size="sm" variant="ghost" onClick={() => onGenerateSimilar(suggestion)}>
           <SparklesIcon className="size-3.5" /> More like this
+        </Button>
+        <Button size="sm" variant="ghost" asChild>
+          <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+            <ExternalLinkIcon className="size-3.5" /> Open in Maps
+          </a>
         </Button>
       </div>
     </div>
