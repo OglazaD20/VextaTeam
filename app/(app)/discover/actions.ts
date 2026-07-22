@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { discoverActivities, type ActivitySuggestion } from "@/lib/activities/discover";
 import { pushIfGoogleConnected } from "@/lib/calendar/sync";
+import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -172,6 +173,7 @@ export async function saveActivity(input: SaveActivityInput): Promise<ActionResu
       category: "lifestyle",
       occurredAt: data.startsAt ?? undefined,
     });
+    await awardXp(supabase, user.id, "discover_saved", inserted.id, 5);
   }
 
   revalidatePath("/discover");

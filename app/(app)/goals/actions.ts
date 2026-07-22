@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { generateGoalBreakdown } from "@/lib/ai/generate-goal-breakdown";
+import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -218,6 +219,11 @@ export async function setGoalStatus(
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
+
+  if (status === "completed") {
+    await awardXp(supabase, user.id, "goal_completed", goalId, 100);
+  }
+
   revalidateGoals();
   return {};
 }

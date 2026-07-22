@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { awardXp } from "@/lib/gamification/award";
 import { createClient } from "@/lib/supabase/server";
 import { createHabitSchema, updateHabitSchema, type CreateHabitInput } from "./schema";
 
@@ -200,14 +201,19 @@ export async function toggleHabitLog(
 
     if (error) return { error: error.message };
   } else {
-    const { error } = await supabase.from("habit_logs").insert({
-      habit_id: habitId,
-      user_id: user.id,
-      logged_for_date: dateKey,
-      completed: true,
-    });
+    const { data: inserted, error } = await supabase
+      .from("habit_logs")
+      .insert({
+        habit_id: habitId,
+        user_id: user.id,
+        logged_for_date: dateKey,
+        completed: true,
+      })
+      .select("id")
+      .single();
 
     if (error) return { error: error.message };
+    if (inserted) await awardXp(supabase, user.id, "habit_logged", inserted.id, 8);
   }
 
   revalidatePath("/habits");

@@ -899,6 +899,50 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["memories"]["Row"]>;
         Relationships: [];
       };
+      user_stats: {
+        Row: {
+          user_id: string;
+          xp: number;
+          coins: number;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_stats"]["Row"]> & { user_id: string };
+        Update: Partial<Database["public"]["Tables"]["user_stats"]["Row"]>;
+        Relationships: [];
+      };
+      user_achievements: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_id: string;
+          progress_current: number;
+          unlocked_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_achievements"]["Row"]> & {
+          user_id: string;
+          achievement_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_achievements"]["Row"]>;
+        Relationships: [];
+      };
+      xp_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          source: string;
+          related_id: string | null;
+          xp_awarded: number;
+          coins_awarded: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["xp_events"]["Row"]> & {
+          user_id: string;
+          source: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["xp_events"]["Row"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {

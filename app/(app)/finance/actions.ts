@@ -11,6 +11,7 @@ import {
   computeSpendingByCategory,
   projectMonthEndSpend,
 } from "@/lib/finance/calculations";
+import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -76,6 +77,8 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
     .single();
 
   if (error) return { error: error.message };
+
+  if (inserted) await awardXp(supabase, user.id, "finance_transaction_logged", inserted.id, 5);
 
   // Only transactions with a description become memories — a bare "€4.50
   // food expense" isn't recallable, but "Birthday gift for mom" is exactly

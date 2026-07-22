@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { awardXpAndCheckAchievements } from "@/lib/gamification/engine";
 import { getTodayKey } from "@/lib/habits/today-key";
 import { recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
@@ -68,6 +69,8 @@ export async function logMood(input: LogMoodInput): Promise<ActionResult> {
     .single();
 
   if (error) return { error: error.message };
+
+  if (inserted) await awardXpAndCheckAchievements(supabase, user.id, timeZone, "mood_logged", inserted.id, 5);
 
   // Only check-ins with a note are recorded as memories — a bare mood tap
   // (mood: 3) isn't something anyone later asks "when did I feel a 3?"

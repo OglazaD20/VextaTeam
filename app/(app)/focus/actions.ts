@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { awardXp } from "@/lib/gamification/award";
 import { createClient } from "@/lib/supabase/server";
 import { endFocusSessionSchema, startFocusSessionSchema } from "./schema";
 
@@ -82,6 +83,10 @@ export async function endFocusSession(
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (!parsed.data.interrupted) {
+    await awardXp(supabase, user.id, "focus_session_completed", id, 15);
   }
 
   revalidatePath("/focus");

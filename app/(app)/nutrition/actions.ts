@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { awardXp } from "@/lib/gamification/award";
 import { createClient } from "@/lib/supabase/server";
 import { scaleMacros, sumMacros } from "@/lib/nutrition/macros";
 import type { MealType, Tables, UpdateTables } from "@/types/database";
@@ -104,24 +105,30 @@ export async function logFood(formData: FormData): Promise<ActionResult> {
     data.quantity,
   );
 
-  const { error } = await supabase.from("food_logs").insert({
-    user_id: user.id,
-    food_id: foodId,
-    meal_type: data.mealType,
-    quantity: data.quantity,
-    calories: scaled.calories,
-    protein_g: scaled.proteinG,
-    fat_g: scaled.fatG,
-    carbs_g: scaled.carbsG,
-    fiber_g: scaled.fiberG,
-    sugar_g: scaled.sugarG,
-    sodium_mg: scaled.sodiumMg,
-    notes: data.notes || null,
-  });
+  const { data: inserted, error } = await supabase
+    .from("food_logs")
+    .insert({
+      user_id: user.id,
+      food_id: foodId,
+      meal_type: data.mealType,
+      quantity: data.quantity,
+      calories: scaled.calories,
+      protein_g: scaled.proteinG,
+      fat_g: scaled.fatG,
+      carbs_g: scaled.carbsG,
+      fiber_g: scaled.fiberG,
+      sugar_g: scaled.sugarG,
+      sodium_mg: scaled.sodiumMg,
+      notes: data.notes || null,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
+
+  if (inserted) await awardXp(supabase, user.id, "food_logged", inserted.id, 5);
 
   revalidateNutrition();
   return {};
@@ -319,21 +326,27 @@ export async function createAndLogFood(formData: FormData): Promise<ActionResult
     scaleFactor,
   );
 
-  const { error: logError } = await supabase.from("food_logs").insert({
-    user_id: user.id,
-    food_id: created.id,
-    meal_type: data.mealType,
-    quantity: scaleFactor,
-    calories: scaled.calories,
-    protein_g: scaled.proteinG,
-    fat_g: scaled.fatG,
-    carbs_g: scaled.carbsG,
-    fiber_g: scaled.fiberG,
-    sugar_g: scaled.sugarG,
-    sodium_mg: scaled.sodiumMg,
-  });
+  const { data: loggedFood, error: logError } = await supabase
+    .from("food_logs")
+    .insert({
+      user_id: user.id,
+      food_id: created.id,
+      meal_type: data.mealType,
+      quantity: scaleFactor,
+      calories: scaled.calories,
+      protein_g: scaled.proteinG,
+      fat_g: scaled.fatG,
+      carbs_g: scaled.carbsG,
+      fiber_g: scaled.fiberG,
+      sugar_g: scaled.sugarG,
+      sodium_mg: scaled.sodiumMg,
+    })
+    .select("id")
+    .single();
 
   if (logError) return { error: logError.message };
+
+  if (loggedFood) await awardXp(supabase, user.id, "food_logged", loggedFood.id, 5);
 
   revalidateNutrition();
   return {};
@@ -443,12 +456,17 @@ export async function logWater(formData: FormData): Promise<ActionResult> {
 
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase.from("water_logs").insert({
-    user_id: user.id,
-    amount_ml: parsed.data.amountMl,
-  });
+  const { data: inserted, error } = await supabase
+    .from("water_logs")
+    .insert({
+      user_id: user.id,
+      amount_ml: parsed.data.amountMl,
+    })
+    .select("id")
+    .single();
 
   if (error) return { error: error.message };
+  if (inserted) await awardXp(supabase, user.id, "water_logged", inserted.id, 3);
   revalidateNutrition();
   return {};
 }

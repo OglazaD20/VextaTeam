@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { deleteIfGoogleConnected, pushIfGoogleConnected } from "@/lib/calendar/sync";
+import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -342,6 +343,10 @@ export async function setScheduleItemStatus(
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (status === "completed") {
+    await awardXp(supabase, user.id, "task_completed", id, 10);
   }
 
   revalidateSchedule();

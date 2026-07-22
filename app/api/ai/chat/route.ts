@@ -3,6 +3,7 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { z } from "zod";
 
 import { runChatTurn } from "@/lib/ai/chat";
+import { awardXpAndCheckAchievements } from "@/lib/gamification/engine";
 import { createClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
@@ -69,11 +70,19 @@ export async function POST(request: Request) {
   }));
   history.push({ role: "user", content: parsed.data.message });
 
-  await supabase.from("ai_messages").insert({
-    conversation_id: conversationId,
-    role: "user",
-    content: parsed.data.message,
-  });
+  const { data: userMessage } = await supabase
+    .from("ai_messages")
+    .insert({
+      conversation_id: conversationId,
+      role: "user",
+      content: parsed.data.message,
+    })
+    .select("id")
+    .single();
+
+  if (userMessage) {
+    await awardXpAndCheckAchievements(supabase, user.id, timeZone, "ai_message_sent", userMessage.id, 2);
+  }
 
   try {
     const finalText = await runChatTurn({ supabase, userId: user.id, timeZone }, history);
