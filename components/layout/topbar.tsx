@@ -2,11 +2,13 @@
 
 import { MenuIcon, SparklesIcon } from "lucide-react";
 
+import { useTranslations } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
 import { NotificationsBell } from "@/components/layout/notifications-bell";
 import { useUIStore } from "@/hooks/use-ui-store";
+import { LOCALE_INTL_TAG } from "@/lib/i18n/locales";
 import type { Tables } from "@/types/database";
 
 export function TopBar({
@@ -21,7 +23,8 @@ export function TopBar({
   equippedFrameId: string;
 }) {
   const toggleChat = useUIStore((state) => state.toggleChat);
-  const today = new Date().toLocaleDateString(undefined, {
+  const { locale, messages } = useTranslations();
+  const today = new Date().toLocaleDateString(LOCALE_INTL_TAG[locale], {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -34,7 +37,7 @@ export function TopBar({
         size="icon"
         className="lg:hidden"
         onClick={onOpenMobileNav}
-        aria-label="Open navigation"
+        aria-label={messages.topbar.openNavigation}
       >
         <MenuIcon />
       </Button>
@@ -47,7 +50,7 @@ export function TopBar({
           size="icon"
           className="xl:hidden"
           onClick={toggleChat}
-          aria-label="Toggle assistant"
+          aria-label={messages.topbar.toggleAssistant}
         >
           <SparklesIcon />
         </Button>

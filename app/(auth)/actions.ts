@@ -4,9 +4,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getDictionary } from "@/lib/i18n/get-locale";
 import { createClient } from "@/lib/supabase/server";
 
-const emailSchema = z.string().email("Enter a valid email address.");
+const emailSchema = z.string().email();
 
 export interface AuthActionState {
   status: "idle" | "success" | "error";
@@ -24,9 +25,11 @@ export async function signInWithEmail(
   _prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const { t } = await getDictionary();
+
   const parsed = emailSchema.safeParse(formData.get("email"));
   if (!parsed.success) {
-    return { status: "error", message: parsed.error.issues[0]?.message };
+    return { status: "error", message: t.auth.invalidEmail };
   }
 
   const supabase = await createClient();
@@ -45,7 +48,7 @@ export async function signInWithEmail(
 
   return {
     status: "success",
-    message: "Check your inbox for a sign-in link.",
+    message: t.auth.checkYourEmail,
   };
 }
 

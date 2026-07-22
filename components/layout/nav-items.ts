@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   AppleIcon,
   BrainIcon,
@@ -19,23 +20,28 @@ import {
   WalletIcon,
 } from "lucide-react";
 
+import type { Messages } from "@/lib/i18n/messages/en";
+
+type NavLabelKey = keyof Messages["nav"];
+
+/** labelKey indexes lib/i18n/messages/*.ts `nav.*`, translated at render time in sidebar-nav.tsx/mobile-nav.tsx. */
 export const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGridIcon },
-  { href: "/today", label: "Today", icon: LayoutDashboardIcon },
-  { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
-  { href: "/goals", label: "Goals", icon: TargetIcon },
-  { href: "/habits", label: "Habits", icon: ListChecksIcon },
-  { href: "/mood", label: "Mood", icon: SmileIcon },
-  { href: "/nutrition", label: "Nutrition", icon: AppleIcon },
-  { href: "/health", label: "Health", icon: HeartPulseIcon },
-  { href: "/finance", label: "Finance", icon: WalletIcon },
-  { href: "/discover", label: "Discover", icon: CompassIcon },
-  { href: "/memory", label: "Memory", icon: BrainIcon },
-  { href: "/analytics", label: "Analytics", icon: ChartNoAxesCombinedIcon },
-  { href: "/achievements", label: "Achievements", icon: TrophyIcon },
-  { href: "/rewards", label: "Rewards", icon: PaletteIcon },
-  { href: "/focus", label: "Focus", icon: TimerIcon },
-  { href: "/stats", label: "Stats", icon: CalendarClockIcon },
-  { href: "/chat", label: "Assistant", icon: SparklesIcon },
-  { href: "/settings", label: "Settings", icon: SettingsIcon },
-] as const;
+  { href: "/dashboard", labelKey: "dashboard", icon: LayoutGridIcon },
+  { href: "/today", labelKey: "today", icon: LayoutDashboardIcon },
+  { href: "/calendar", labelKey: "calendar", icon: CalendarDaysIcon },
+  { href: "/goals", labelKey: "goals", icon: TargetIcon },
+  { href: "/habits", labelKey: "habits", icon: ListChecksIcon },
+  { href: "/mood", labelKey: "mood", icon: SmileIcon },
+  { href: "/nutrition", labelKey: "nutrition", icon: AppleIcon },
+  { href: "/health", labelKey: "health", icon: HeartPulseIcon },
+  { href: "/finance", labelKey: "finance", icon: WalletIcon },
+  { href: "/discover", labelKey: "discover", icon: CompassIcon },
+  { href: "/memory", labelKey: "memory", icon: BrainIcon },
+  { href: "/analytics", labelKey: "analytics", icon: ChartNoAxesCombinedIcon },
+  { href: "/achievements", labelKey: "achievements", icon: TrophyIcon },
+  { href: "/rewards", labelKey: "rewards", icon: PaletteIcon },
+  { href: "/focus", labelKey: "focus", icon: TimerIcon },
+  { href: "/stats", labelKey: "stats", icon: CalendarClockIcon },
+  { href: "/chat", labelKey: "assistant", icon: SparklesIcon },
+  { href: "/settings", labelKey: "settings", icon: SettingsIcon },
+] as const satisfies readonly { href: string; labelKey: NavLabelKey; icon: LucideIcon }[];

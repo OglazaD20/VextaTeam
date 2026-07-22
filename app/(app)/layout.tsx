@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
+import { getLocale } from "@/lib/i18n/get-locale";
 import { generateContextualNotifications } from "@/lib/notifications/generate";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,19 +43,22 @@ export default async function AppLayout({
 
   const equippedThemeId = equips?.find((e) => e.category === "theme")?.reward_id ?? "theme_default";
   const equippedFrameId = equips?.find((e) => e.category === "frame")?.reward_id ?? "frame_none";
+  const locale = await getLocale();
 
   return (
-    <AppShell
-      user={{
-        name: (user.user_metadata?.full_name as string | undefined) ?? null,
-        email: user.email ?? null,
-        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-      }}
-      notifications={notifications ?? []}
-      equippedThemeId={equippedThemeId}
-      equippedFrameId={equippedFrameId}
-    >
-      {children}
-    </AppShell>
+    <I18nProvider initialLocale={locale}>
+      <AppShell
+        user={{
+          name: (user.user_metadata?.full_name as string | undefined) ?? null,
+          email: user.email ?? null,
+          avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+        }}
+        notifications={notifications ?? []}
+        equippedThemeId={equippedThemeId}
+        equippedFrameId={equippedFrameId}
+      >
+        {children}
+      </AppShell>
+    </I18nProvider>
   );
 }

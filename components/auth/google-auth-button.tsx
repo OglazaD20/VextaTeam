@@ -1,7 +1,10 @@
 import { signInWithGoogle } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
+import { getDictionary } from "@/lib/i18n/get-locale";
 
-export function GoogleAuthButton() {
+export async function GoogleAuthButton() {
+  const { t } = await getDictionary();
+
   return (
     <form action={signInWithGoogle}>
       <Button type="submit" variant="outline" className="w-full">
@@ -23,7 +26,7 @@ export function GoogleAuthButton() {
             d="M12 4.75c1.76 0 3.34.6 4.58 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.26 6.6l4.01 3.1C6.22 6.86 8.87 4.75 12 4.75Z"
           />
         </svg>
-        Continue with Google
+        {t.auth.continueWithGoogle}
       </Button>
     </form>
   );

@@ -4,6 +4,7 @@ import { LogOutIcon, SettingsIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 
 import { signOut } from "@/app/(auth)/actions";
+import { useTranslations } from "@/components/i18n/i18n-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ export function UserMenu({
   avatarUrl: string | null;
   equippedFrameId: string;
 }) {
+  const { messages } = useTranslations();
   const initials = (name ?? email ?? "?")
     .split(" ")
     .map((part) => part[0])
@@ -52,26 +54,26 @@ export function UserMenu({
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="font-normal">
           <p className="truncate text-sm font-medium text-foreground">
-            {name ?? "Your account"}
+            {name ?? messages.topbar.account}
           </p>
           <p className="truncate text-xs text-muted-foreground">{email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/settings">
-            <UserIcon /> Profile
+            <UserIcon /> {messages.topbar.profile}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/settings">
-            <SettingsIcon /> Settings
+            <SettingsIcon /> {messages.nav.settings}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" asChild>
           <form action={signOut} className="contents">
             <button type="submit" className="flex w-full items-center gap-2">
-              <LogOutIcon /> Sign out
+              <LogOutIcon /> {messages.common.signOut}
             </button>
           </form>
         </DropdownMenuItem>

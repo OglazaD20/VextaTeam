@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarIcon, SlidersHorizontalIcon, UserIcon } from "lucide-react";
+import { CalendarIcon, GlobeIcon, SlidersHorizontalIcon, UserIcon } from "lucide-react";
 
 import {
   Card,
@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CalendarConnections } from "@/components/settings/calendar-connections";
+import { LanguageSwitcher } from "@/components/settings/language-switcher";
 import { PreferencesForm } from "@/components/settings/preferences-form";
+import { getDictionary } from "@/lib/i18n/get-locale";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Settings — LifeFlow" };
@@ -20,6 +22,7 @@ export default async function SettingsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { t } = await getDictionary();
 
   const [{ data: connections }, { data: settings }] = user
     ? await Promise.all([
@@ -31,21 +34,19 @@ export default async function SettingsPage() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your account, integrations, and preferences.
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight">{t.settings.title}</h1>
+        <p className="text-sm text-muted-foreground">{t.settings.subtitle}</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <UserIcon className="size-4" /> Account
+            <UserIcon className="size-4" /> {t.settings.account}
           </CardTitle>
-          <CardDescription>Your profile details.</CardDescription>
+          <CardDescription>{t.settings.accountDescription}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Appearance</span>
+          <span className="text-muted-foreground">{t.settings.appearance}</span>
           <ThemeToggle />
         </CardContent>
       </Card>
@@ -53,12 +54,22 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarIcon className="size-4" /> Calendars
+            <GlobeIcon className="size-4" /> {t.settings.language}
           </CardTitle>
-          <CardDescription>
-            Google Calendar events sync in as fixed anchors on your timeline.
-            Outlook and Apple Calendar are planned for a later milestone.
-          </CardDescription>
+          <CardDescription>{t.settings.languageDescription}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">{t.settings.language}</span>
+          <LanguageSwitcher />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CalendarIcon className="size-4" /> {t.settings.calendars}
+          </CardTitle>
+          <CardDescription>{t.settings.calendarsDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <CalendarConnections connections={connections ?? []} />
@@ -68,11 +79,9 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <SlidersHorizontalIcon className="size-4" /> Preferences
+            <SlidersHorizontalIcon className="size-4" /> {t.settings.preferences}
           </CardTitle>
-          <CardDescription>
-            Working hours, chronotype, and notification preferences.
-          </CardDescription>
+          <CardDescription>{t.settings.preferencesDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <PreferencesForm
