@@ -5,6 +5,7 @@ import { toZonedTime } from "date-fns-tz";
 
 import { ArchivedSection } from "@/components/tasks/archived-section";
 import { DayViewHeader } from "@/components/calendar/day-view-header";
+import { QuickAccessRow } from "@/components/calendar/quick-access-row";
 import { TimelineGrid } from "@/components/calendar/timeline-grid";
 import { UnscheduledList } from "@/components/timeline/unscheduled-list";
 import { getDayRangeUtc } from "@/lib/scheduling/day-range";
@@ -103,7 +104,7 @@ export default async function CalendarDayPage({
   const monthKey = `${year}-${String(month).padStart(2, "0")}`;
 
   return (
-    <div className="mx-auto flex h-full max-w-2xl flex-col gap-6 p-6">
+    <div className="mx-auto flex h-full max-w-2xl flex-col gap-6 p-4 sm:p-6">
       <DayViewHeader
         dateKey={resolvedKey}
         label={DAY_LABEL.format(localDate)}
@@ -112,6 +113,7 @@ export default async function CalendarDayPage({
         monthKey={monthKey}
         allTags={allTags}
       />
+      <QuickAccessRow />
       <TimelineGrid
         items={items ?? []}
         dateKey={resolvedKey}

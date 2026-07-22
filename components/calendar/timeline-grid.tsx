@@ -5,6 +5,7 @@ import * as React from "react";
 import { moveTaskToDay } from "@/app/(app)/today/actions";
 import { TaskEditorDialog } from "@/components/tasks/task-editor-dialog";
 import { TimelineBlock } from "@/components/calendar/timeline-block";
+import { getTodayKey } from "@/lib/habits/today-key";
 import {
   clampMinutes,
   minutesFromMidnight,
@@ -64,11 +65,26 @@ export function TimelineGrid({
   allTags?: string[];
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
   const didDragRef = React.useRef(false);
   const [drag, setDrag] = React.useState<DragState | null>(null);
   const [editingItem, setEditingItem] = React.useState<Tables<"schedule_items"> | null>(null);
   const [isEditorOpen, setEditorOpen] = React.useState(false);
   const [createAt, setCreateAt] = React.useState<string | null>(null);
+
+  // Scrolls the (otherwise 1440px-tall, hour-0-to-24 tall) timeline so "now"
+  // starts near the top of the viewport instead of forcing a long scroll
+  // past every early-morning hour on every visit — a real mobile pain point,
+  // not just a nice-to-have.
+  React.useEffect(() => {
+    if (dateKey !== getTodayKey(timeZone)) return;
+    const nowMinutes = minutesFromMidnight(new Date(), timeZone);
+    const target = Math.max(0, minutesToPx(nowMinutes) - 120);
+    scrollRef.current?.scrollTo({ top: target });
+    // Only ever run once per mount — a user manually scrolling shouldn't get
+    // yanked back to "now".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const scheduled = React.useMemo(
     () => items.filter((item) => item.scheduled_start && item.scheduled_end),
@@ -176,17 +192,21 @@ export function TimelineGrid({
     setEditorOpen(true);
   }
 
+  const isToday = dateKey === getTodayKey(timeZone);
+
   return (
     <div className="flex flex-col gap-3">
-      <div
-        ref={containerRef}
-        className="relative border-t border-border"
-        style={{ height: GRID_HEIGHT }}
-        onClick={handleGridClick}
-      >
-        <HourGridLines />
+      <div ref={scrollRef} className="max-h-[min(70vh,820px)] overflow-y-auto overscroll-contain rounded-xl">
+        <div
+          ref={containerRef}
+          className="relative border-t border-border"
+          style={{ height: GRID_HEIGHT }}
+          onClick={handleGridClick}
+        >
+          <HourGridLines />
+          {isToday && <NowIndicator timeZone={timeZone} />}
 
-        {scheduled.map((item) => {
+          {scheduled.map((item) => {
           const isDraggingThis = drag?.itemId === item.id;
           const startMinutes = isDraggingThis
             ? drag.previewStartMinutes
@@ -215,7 +235,8 @@ export function TimelineGrid({
               }}
             />
           );
-        })}
+          })}
+        </div>
       </div>
 
       <TaskEditorDialog
@@ -225,6 +246,26 @@ export function TimelineGrid({
         allTags={allTags}
         defaultDate={createAt ?? dateKey}
       />
+    </div>
+  );
+}
+
+/** A live "now" marker on today's timeline, refreshing once a minute. */
+function NowIndicator({ timeZone }: { timeZone: string }) {
+  const [minutes, setMinutes] = React.useState(() => minutesFromMidnight(new Date(), timeZone));
+
+  React.useEffect(() => {
+    const interval = setInterval(() => setMinutes(minutesFromMidnight(new Date(), timeZone)), 60_000);
+    return () => clearInterval(interval);
+  }, [timeZone]);
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 z-30 flex items-center gap-1"
+      style={{ top: minutesToPx(minutes) }}
+    >
+      <span className="ml-11 size-2 shrink-0 rounded-full bg-destructive" />
+      <div className="h-px flex-1 bg-destructive" />
     </div>
   );
 }

@@ -78,17 +78,17 @@ export function DayViewHeader({
   }
 
   return (
-    <div className="flex items-center justify-between">
-      <div>
+    <div className="sticky top-0 z-20 -mx-4 flex items-center justify-between gap-2 bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80 sm:-mx-6 sm:px-6">
+      <div className="min-w-0">
         <Link
           href={`/calendar?month=${monthKey}`}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="hidden text-xs text-muted-foreground hover:text-foreground sm:inline"
         >
           ← Calendar
         </Link>
-        <h1 className="text-xl font-semibold tracking-tight">{label}</h1>
+        <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{label}</h1>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
         <Button variant="outline" size="icon" asChild>
           <Link href={`/calendar/day/${prevKey}`} aria-label="Previous day">
             <ChevronLeftIcon className="size-4" />
@@ -99,11 +99,17 @@ export function DayViewHeader({
             <ChevronRightIcon className="size-4" />
           </Link>
         </Button>
-        <Button variant="outline" size="sm" onClick={handlePlanDay} disabled={isPlanning}>
+        <Button variant="outline" size="icon" className="sm:hidden" onClick={handlePlanDay} disabled={isPlanning} aria-label="Plan this day">
+          {isPlanning ? <Loader2Icon className="animate-spin" /> : <SparklesIcon className="size-4" />}
+        </Button>
+        <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={handlePlanDay} disabled={isPlanning}>
           {isPlanning ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}
           Plan this day
         </Button>
-        <Button onClick={() => setEditorOpen(true)} size="sm">
+        <Button onClick={() => setEditorOpen(true)} size="icon" className="sm:hidden" aria-label="Add task">
+          <PlusIcon className="size-4" />
+        </Button>
+        <Button onClick={() => setEditorOpen(true)} size="sm" className="hidden sm:inline-flex">
           <PlusIcon /> Add
         </Button>
       </div>
