@@ -21,6 +21,9 @@ export function ConfettiBurst({ fire }: { fire: boolean }) {
 
   React.useEffect(() => {
     if (!fire) return;
+    // Respects prefers-reduced-motion — a full-screen particle burst is
+    // exactly the kind of motion that setting asks apps to skip.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
