@@ -244,6 +244,15 @@ export interface Database {
           mood: number;
           energy: number | null;
           note: string | null;
+          stress: number | null;
+          motivation: number | null;
+          productivity: number | null;
+          happiness: number | null;
+          sleep_quality: number | null;
+          anxiety: number | null;
+          confidence: number | null;
+          focus: number | null;
+          logged_for_date: string;
         };
         Insert: Partial<Database["public"]["Tables"]["mood_logs"]["Row"]> & {
           user_id: string;

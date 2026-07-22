@@ -12,6 +12,11 @@ import {
   computeWeightTrend,
 } from "@/lib/coach/signals";
 import { getHabitsWithStreaks } from "@/lib/habits/get-habits-with-streaks";
+import {
+  computeMoodByWeekday,
+  computeMoodSleepCorrelation,
+  computeMoodTrend,
+} from "@/lib/mood/signals";
 import { createClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({ period: z.enum(["daily", "weekly", "monthly"]) });
@@ -87,6 +92,7 @@ export async function POST(request: Request) {
     { data: priorHealth },
     { data: waterLogs, error: waterError },
     { data: bodyMetrics, error: bodyError },
+    { data: moodLogs, error: moodError },
   ] = await Promise.all([
     supabase
       .from("schedule_items")
@@ -130,13 +136,18 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .gte("logged_for_date", periodStart.toISOString().slice(0, 10))
       .order("logged_for_date", { ascending: true }),
+    supabase
+      .from("mood_logs")
+      .select("logged_at, logged_for_date, mood, stress, energy")
+      .eq("user_id", user.id)
+      .gte("logged_at", periodStart.toISOString()),
   ]);
 
-  if (tasksError || focusError || healthError || waterError || bodyError) {
+  if (tasksError || focusError || healthError || waterError || bodyError || moodError) {
     return NextResponse.json(
       {
         error:
-          (tasksError ?? focusError ?? healthError ?? waterError ?? bodyError)?.message ??
+          (tasksError ?? focusError ?? healthError ?? waterError ?? bodyError ?? moodError)?.message ??
           "Failed to load data",
       },
       { status: 500 },
@@ -162,6 +173,16 @@ export async function POST(request: Request) {
 
   const habitsWithStreaks = await getHabitsWithStreaks(supabase, user.id, timeZone);
 
+  const moodRecords = (moodLogs ?? []).map((m) => ({
+    loggedAt: m.logged_at,
+    mood: m.mood,
+    stress: m.stress,
+    energy: m.energy,
+  }));
+  const sleepByDate = new Map(
+    healthRecords.filter((h) => h.sleepHours !== null).map((h) => [h.dateKey, h.sleepHours!]),
+  );
+
   const signals: Record<string, unknown> = {
     period,
     taskCompletion: computeTaskCompletionSignal(taskRecords, timeZone),
@@ -176,6 +197,12 @@ export async function POST(request: Request) {
     ),
     longestHabitStreak: computeLongestHabitStreak(
       habitsWithStreaks.map((h) => ({ name: h.habit.name, streak: h.streak })),
+    ),
+    moodTrend: computeMoodTrend(moodRecords),
+    moodByWeekday: computeMoodByWeekday(moodRecords, timeZone),
+    moodSleepCorrelation: computeMoodSleepCorrelation(
+      (moodLogs ?? []).map((m) => ({ dateKey: m.logged_for_date, mood: m.mood })),
+      sleepByDate,
     ),
   };
 
