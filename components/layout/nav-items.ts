@@ -9,6 +9,7 @@ import {
   ListChecksIcon,
   SettingsIcon,
   SparklesIcon,
+  TargetIcon,
   TimerIcon,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutGridIcon },
   { href: "/today", label: "Today", icon: LayoutDashboardIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
+  { href: "/goals", label: "Goals", icon: TargetIcon },
   { href: "/habits", label: "Habits", icon: ListChecksIcon },
   { href: "/nutrition", label: "Nutrition", icon: AppleIcon },
   { href: "/health", label: "Health", icon: HeartPulseIcon },

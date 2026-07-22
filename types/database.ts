@@ -45,6 +45,17 @@ export type Theme = "light" | "dark" | "system";
 export type Chronotype = "early_bird" | "night_owl" | "flexible";
 export type FoodSource = "usda" | "custom" | "recipe";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "drink";
+export type GoalCategory =
+  | "fitness"
+  | "business"
+  | "learning"
+  | "finance"
+  | "reading"
+  | "career"
+  | "travel"
+  | "personal"
+  | "health"
+  | "custom";
 
 export interface RecurrenceRule {
   freq: "daily" | "weekly" | "monthly";
@@ -128,6 +139,7 @@ export interface Database {
           recurrence_rule: RecurrenceRule | null;
           archived_at: string | null;
           sort_order: number;
+          goal_id: string | null;
           deleted_at: string | null;
           created_at: string;
           updated_at: string;
@@ -530,6 +542,50 @@ export interface Database {
           data: Record<string, unknown>;
         };
         Update: Partial<Database["public"]["Tables"]["saved_activities"]["Row"]>;
+        Relationships: [];
+      };
+      goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string | null;
+          category: GoalCategory;
+          priority: "low" | "medium" | "high";
+          status: "active" | "completed" | "archived";
+          color: string | null;
+          icon: string | null;
+          deadline: string | null;
+          target_value: number | null;
+          current_value: number;
+          unit: string | null;
+          manual_progress_pct: number | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["goals"]["Row"]> & {
+          user_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["goals"]["Row"]>;
+        Relationships: [];
+      };
+      goal_milestones: {
+        Row: {
+          id: string;
+          goal_id: string;
+          title: string;
+          is_completed: boolean;
+          sort_order: number;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["goal_milestones"]["Row"]> & {
+          goal_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["goal_milestones"]["Row"]>;
         Relationships: [];
       };
       task_subtasks: {
