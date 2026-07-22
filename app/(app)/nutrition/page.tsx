@@ -7,6 +7,7 @@ import { GoalsDialog } from "@/components/nutrition/goals-dialog";
 import { MacroRing } from "@/components/nutrition/macro-ring";
 import { MealSection, type FoodLogEntry } from "@/components/nutrition/meal-section";
 import { MealTemplatesSection } from "@/components/nutrition/meal-templates-section";
+import { NutritionChatPanel } from "@/components/nutrition/nutrition-chat-panel";
 import { RecipesSection } from "@/components/nutrition/recipes-section";
 import { WaterTracker } from "@/components/nutrition/water-tracker";
 import { WeightChart, type WeightPoint } from "@/components/nutrition/weight-chart";
@@ -159,6 +160,8 @@ export default async function NutritionPage() {
           <WaterTracker totalMl={totalWaterMl} goalMl={settings?.water_goal_ml ?? 2000} />
         </CardContent>
       </Card>
+
+      <NutritionChatPanel />
 
       <div className="flex flex-col gap-3">
         {MEAL_TYPES.map((mealType) => (

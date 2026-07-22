@@ -543,7 +543,7 @@ async function getFinanceSummary(ctx: ToolContext) {
   };
 }
 
-async function getNutritionSummary(ctx: ToolContext) {
+export async function getNutritionSummary(ctx: ToolContext) {
   const { start, end } = getTodayRangeUtc(ctx.timeZone);
 
   const [{ data: logs }, { data: settings }] = await Promise.all([

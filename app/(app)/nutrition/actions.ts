@@ -823,3 +823,51 @@ export async function deleteRecipe(foodId: string): Promise<ActionResult> {
   revalidateNutrition();
   return {};
 }
+
+export interface LogFoodItemInput {
+  foodId: string;
+  quantity: number;
+  calories: number;
+  proteinG: number;
+  fatG: number;
+  carbsG: number;
+  fiberG: number;
+  sugarG: number;
+  sodiumMg: number;
+  mealType: MealType;
+}
+
+/** Confirms and commits nutrition items the AI chat computed — the numbers come pre-scaled from the chat's own computation, never recomputed here, so what the user saw is exactly what gets logged. */
+export async function logFoodItemsBulk(items: LogFoodItemInput[]): Promise<ActionResult> {
+  if (items.length === 0) return { error: "No items to log" };
+
+  const { supabase, user } = await requireUser();
+
+  const { data: inserted, error } = await supabase
+    .from("food_logs")
+    .insert(
+      items.map((item) => ({
+        user_id: user.id,
+        food_id: item.foodId,
+        meal_type: item.mealType,
+        quantity: item.quantity,
+        calories: item.calories,
+        protein_g: item.proteinG,
+        fat_g: item.fatG,
+        carbs_g: item.carbsG,
+        fiber_g: item.fiberG,
+        sugar_g: item.sugarG,
+        sodium_mg: item.sodiumMg,
+      })),
+    )
+    .select("id");
+
+  if (error) return { error: error.message };
+
+  for (const row of inserted ?? []) {
+    await awardXp(supabase, user.id, "food_logged", row.id, 5);
+  }
+
+  revalidateNutrition();
+  return {};
+}
