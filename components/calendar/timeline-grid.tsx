@@ -257,12 +257,20 @@ export function TimelineGrid({
 
 /** A live "now" marker on today's timeline, refreshing once a minute. */
 function NowIndicator({ timeZone }: { timeZone: string }) {
-  const [minutes, setMinutes] = React.useState(() => minutesFromMidnight(new Date(), timeZone));
+  // Starts unset rather than computing "now" during the initial render —
+  // that render runs once on the server and again on the client a moment
+  // later, so the two Date.now() calls never agree and trigger a hydration
+  // mismatch. Setting it only inside an effect keeps server and client
+  // markup identical on first paint; the line just appears a beat later.
+  const [minutes, setMinutes] = React.useState<number | null>(null);
 
   React.useEffect(() => {
+    setMinutes(minutesFromMidnight(new Date(), timeZone));
     const interval = setInterval(() => setMinutes(minutesFromMidnight(new Date(), timeZone)), 60_000);
     return () => clearInterval(interval);
   }, [timeZone]);
+
+  if (minutes === null) return null;
 
   return (
     <div
