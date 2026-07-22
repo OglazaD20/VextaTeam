@@ -125,6 +125,7 @@ export interface Database {
           notification_prefs: Record<string, boolean>;
           default_lat: number | null;
           default_lng: number | null;
+          visible_health_cards: string[];
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["user_settings"]["Row"]> & {
