@@ -110,7 +110,7 @@ export function buildStaticMapUrl(location: LatLng, width = 400, height = 200): 
   url.searchParams.set("height", String(height));
   url.searchParams.set("center", `lonlat:${location.lng},${location.lat}`);
   url.searchParams.set("zoom", "14");
-  url.searchParams.set("marker", `lonlat:${location.lng},${location.lat};color:%23ff5a5f;size:medium`);
+  url.searchParams.set("marker", `lonlat:${location.lng},${location.lat};color:#ff5a5f;size:medium`);
   url.searchParams.set("apiKey", env.PLACES_API_KEY ?? "");
   return url.toString();
 }
@@ -150,13 +150,20 @@ export function buildOverviewStaticMapUrl(
   url.searchParams.set("center", `lonlat:${center.lng},${center.lat}`);
   url.searchParams.set("zoom", String(estimateZoomForRadiusKm(farthestKm)));
 
-  for (const point of points.slice(0, 40)) {
-    url.searchParams.append(
-      "marker",
-      `lonlat:${point.location.lng},${point.location.lat};color:%23${point.color ?? "3b82f6"};size:small`,
+  // Geoapify expects multiple pins as ONE marker param, pipe-separated —
+  // repeated &marker=&marker= params get parsed as an array and rejected
+  // with a 400 ("marker[0][1]" does not match any of the allowed types).
+  // Colors use a literal "#" (not pre-encoded "%23") — URLSearchParams
+  // encodes it exactly once; pre-encoding double-encodes it to "%2523",
+  // which Geoapify's marker parser rejects outright.
+  const markerDescriptors = points
+    .slice(0, 40)
+    .map(
+      (point) =>
+        `lonlat:${point.location.lng},${point.location.lat};color:#${point.color ?? "3b82f6"};size:small`,
     );
-  }
-  url.searchParams.append("marker", `lonlat:${center.lng},${center.lat};color:%23ff5a5f;size:medium`);
+  markerDescriptors.push(`lonlat:${center.lng},${center.lat};color:#ff5a5f;size:medium`);
+  url.searchParams.set("marker", markerDescriptors.join("|"));
   url.searchParams.set("apiKey", env.PLACES_API_KEY ?? "");
   return url.toString();
 }
