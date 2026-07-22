@@ -6,6 +6,7 @@ import { generateGoalBreakdown } from "@/lib/ai/generate-goal-breakdown";
 import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/get-locale";
 import type { Tables } from "@/types/database";
 import {
   addMilestoneSchema,
@@ -126,12 +127,16 @@ export async function createGoal(formData: FormData): Promise<ActionResult<{ id:
 
   if (data.aiBreakdown) {
     try {
-      const breakdown = await generateGoalBreakdown({
-        title: data.title,
-        description: data.description ?? null,
-        category: data.category,
-        deadline: data.deadline ?? null,
-      });
+      const locale = await getLocale();
+      const breakdown = await generateGoalBreakdown(
+        {
+          title: data.title,
+          description: data.description ?? null,
+          category: data.category,
+          deadline: data.deadline ?? null,
+        },
+        locale,
+      );
 
       await supabase.from("goal_milestones").insert(
         breakdown.milestones.map((title, index) => ({

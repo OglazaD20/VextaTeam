@@ -2,10 +2,12 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 
 import { AI_MODEL_CHAT, getOpenAIClient } from "./client";
 import { CHAT_TOOLS, executeTool, type ToolContext } from "./chat-tools";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const MAX_TOOL_ITERATIONS = 6;
 
-function systemPrompt(timeZone: string) {
+function systemPrompt(timeZone: string, locale: Locale) {
   return [
     "You are LifeFlow's assistant: a calm, concise life assistant built into an all-in-one planning app —",
     "not just a calendar bot. You have tools spanning the whole app: schedule, goals, mood, finance,",
@@ -31,6 +33,7 @@ function systemPrompt(timeZone: string) {
     "search_memory — never guess from general knowledge about something specific to this user's history.",
     "Keep replies short — 1 to 3 sentences, conversational, no headers or bullet lists unless listing",
     "multiple items. When you make a change, briefly say what happened.",
+    languageInstruction(locale),
   ].join(" ");
 }
 
@@ -40,7 +43,7 @@ export async function runChatTurn(
 ): Promise<string> {
   const openai = getOpenAIClient();
   const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt(ctx.timeZone) },
+    { role: "system", content: systemPrompt(ctx.timeZone, ctx.locale) },
     ...history,
   ];
 

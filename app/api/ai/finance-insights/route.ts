@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { generateFinanceInsights, type FinanceInsightSignals } from "@/lib/ai/generate-finance-insights";
+import { getLocale } from "@/lib/i18n/get-locale";
 import {
   computeBudgetUsage,
   computeCashFlow,
@@ -131,7 +132,8 @@ export async function POST() {
   };
 
   try {
-    const result = await generateFinanceInsights(signals);
+    const locale = await getLocale();
+    const result = await generateFinanceInsights(signals, locale);
 
     await supabase.from("finance_insights").insert({
       user_id: user.id,

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { discoverActivities } from "@/lib/activities/discover";
 import { ACTIVITY_CATEGORIES } from "@/lib/activities/geoapify-client";
 import { createClient } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 const categoryEnum = z.enum(
   Object.keys(ACTIVITY_CATEGORIES) as [keyof typeof ACTIVITY_CATEGORIES],
@@ -39,7 +40,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const suggestions = await discoverActivities(parsed.data);
+    const locale = await getLocale();
+    const suggestions = await discoverActivities(parsed.data, locale);
 
     await supabase.from("activity_suggestions").insert({
       user_id: user.id,

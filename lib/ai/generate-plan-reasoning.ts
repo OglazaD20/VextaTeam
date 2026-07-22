@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
 import type { PlacementFact } from "@/lib/scheduling/reasoning";
 import type { WeatherSnapshot } from "@/lib/activities/weather-client";
+import type { Locale } from "@/lib/i18n/locales";
 
 const reasoningResponseSchema = z.object({
   itemReasoning: z.array(z.object({ id: z.string(), reasoning: z.string().max(140) })),
@@ -38,6 +40,7 @@ function isNotableSleep(sleep: PlanReasoningInput["lastNightSleep"]): boolean {
 
 export async function generatePlanReasoning(
   input: PlanReasoningInput,
+  locale: Locale,
 ): Promise<PlanReasoningResult> {
   if (
     input.notableFacts.length === 0 &&
@@ -64,6 +67,7 @@ export async function generatePlanReasoning(
           "If lastNightSleep shows short or poor-quality sleep, mention in the daySummary that it's worth",
           "taking it easier today — but never invent a sleep figure that isn't in the input. Return an empty",
           "daySummary only if there is truly nothing worth telling the user.",
+          languageInstruction(locale),
         ].join(" "),
       },
       { role: "user", content: JSON.stringify(input) },

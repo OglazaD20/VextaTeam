@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const answerSchema = z.object({
   answer: z.string().max(500),
@@ -28,6 +30,7 @@ export interface RetrievedMemory {
 export async function generateMemoryAnswer(
   question: string,
   memories: RetrievedMemory[],
+  locale: Locale,
 ): Promise<MemoryAnswer> {
   const openai = getOpenAIClient();
 
@@ -41,7 +44,8 @@ export async function generateMemoryAnswer(
           "below — never invent a memory, date, or detail that isn't in the list. If none of the " +
           "memories actually answer the question, say so plainly rather than guessing. Reference " +
           "specific memories by name/date in your answer, in the style of: \"You saved Sushi Palace " +
-          "on March 3rd.\" Return the ids of the memories you actually used in citedMemoryIds.",
+          "on March 3rd.\" Return the ids of the memories you actually used in citedMemoryIds. " +
+          languageInstruction(locale),
       },
       {
         role: "user",

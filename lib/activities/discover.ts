@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "@/lib/ai/client";
+import { languageInstruction } from "@/lib/ai/language";
+import type { Locale } from "@/lib/i18n/locales";
 import { estimateTravelMinutes, haversineDistanceKm, type LatLng } from "./distance";
 import {
   inferActivityCategory,
@@ -70,7 +72,10 @@ function rankedCandidates(
     .slice(0, 40);
 }
 
-export async function discoverActivities(filters: DiscoverFilters): Promise<ActivitySuggestion[]> {
+export async function discoverActivities(
+  filters: DiscoverFilters,
+  locale: Locale,
+): Promise<ActivitySuggestion[]> {
   const [places, weather] = await Promise.all([
     searchNearbyPlaces(filters.categories, filters.location, filters.maxDistanceKm),
     getCurrentWeather(filters.location),
@@ -103,7 +108,9 @@ export async function discoverActivities(filters: DiscoverFilters): Promise<Acti
           "in the provided list." +
           (filters.similarTo
             ? ` The user specifically liked "${filters.similarTo.placeName}" (${filters.similarTo.pitch}) — favor candidates with a similar vibe over maximizing variety.`
-            : ""),
+            : "") +
+          " " +
+          languageInstruction(locale),
       },
       {
         role: "user",

@@ -5,6 +5,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { getCurrentWeather, type WeatherSnapshot } from "@/lib/activities/weather-client";
 import { estimateDurations } from "@/lib/ai/estimate-durations";
 import { generatePlanReasoning } from "@/lib/ai/generate-plan-reasoning";
+import { getLocale } from "@/lib/i18n/get-locale";
 import { getTodayKey } from "@/lib/habits/today-key";
 import { getWakingWindowUtc } from "@/lib/scheduling/day-range";
 import {
@@ -175,12 +176,16 @@ export async function POST(request: Request) {
   let daySummary = "";
   if (notableFacts.length > 0 || bumpedTitles.length > 0 || lastNightSleep) {
     try {
-      const reasoning = await generatePlanReasoning({
-        notableFacts,
-        bumpedTitles,
-        weather,
-        lastNightSleep,
-      });
+      const locale = await getLocale();
+      const reasoning = await generatePlanReasoning(
+        {
+          notableFacts,
+          bumpedTitles,
+          weather,
+          lastNightSleep,
+        },
+        locale,
+      );
       reasoningById = new Map(reasoning.itemReasoning.map((r) => [r.id, r.reasoning]));
       daySummary = reasoning.daySummary;
     } catch {

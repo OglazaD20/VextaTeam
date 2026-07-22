@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const insightsSchema = z.object({
   headline: z.string().max(120),
@@ -30,6 +32,7 @@ export interface FinanceInsightSignals {
  */
 export async function generateFinanceInsights(
   signals: FinanceInsightSignals,
+  locale: Locale,
 ): Promise<FinanceInsightsResult> {
   const openai = getOpenAIClient();
 
@@ -47,6 +50,7 @@ export async function generateFinanceInsights(
           "\"You forgot about a recurring subscription — Name hasn't billed in 45 days.\" Write 2-5",
           "insights (fewer if there isn't much signal) and one short headline summarizing the overall",
           "financial picture for this month. Always include the currency code given.",
+          languageInstruction(locale),
         ].join(" "),
       },
       { role: "user", content: JSON.stringify(signals) },

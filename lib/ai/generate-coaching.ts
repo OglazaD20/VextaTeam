@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const coachingResponseSchema = z.object({
   headline: z.string().max(120),
@@ -22,7 +24,10 @@ export interface CoachingSignals {
  * reasoning: the model explains patterns, it never invents a number, streak,
  * or correlation that isn't in the input.
  */
-export async function generateCoaching(signals: CoachingSignals): Promise<CoachingResult> {
+export async function generateCoaching(
+  signals: CoachingSignals,
+  locale: Locale,
+): Promise<CoachingResult> {
   const openai = getOpenAIClient();
 
   const response = await openai.chat.completions.create({
@@ -39,6 +44,7 @@ export async function generateCoaching(signals: CoachingSignals): Promise<Coachi
           "Wednesday.\" \"You've maintained your reading streak for 22 days.\" Write 2-5 insights (fewer if",
           "there isn't much signal — never pad with generic advice) and one short headline summarizing the",
           "overall picture for this period.",
+          languageInstruction(locale),
         ].join(" "),
       },
       { role: "user", content: JSON.stringify(signals) },

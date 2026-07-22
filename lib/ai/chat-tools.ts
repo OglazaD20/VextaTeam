@@ -12,6 +12,7 @@ import { getTodayRangeUtc, getWakingWindowUtc } from "@/lib/scheduling/day-range
 import { solveSchedule } from "@/lib/scheduling/solver";
 import type { FixedInterval, FlexibleItem } from "@/lib/scheduling/types";
 import type { createClient } from "@/lib/supabase/server";
+import type { Locale } from "@/lib/i18n/locales";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -19,6 +20,7 @@ export interface ToolContext {
   supabase: SupabaseServerClient;
   userId: string;
   timeZone: string;
+  locale: Locale;
 }
 
 export const CHAT_TOOLS: ChatCompletionTool[] = [

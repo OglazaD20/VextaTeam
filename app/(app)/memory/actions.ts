@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { generateMemoryAnswer, type RetrievedMemory } from "@/lib/ai/generate-memory-answer";
 import { embedText } from "@/lib/memory/embed";
 import { createClient } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/get-locale";
 import type { Tables } from "@/types/database";
 import { askMemorySchema, searchMemorySchema, type AskMemoryInput, type SearchMemoryInput } from "./schema";
 
@@ -149,7 +150,8 @@ export async function askMemory(input: AskMemoryInput): Promise<ActionResult<Ask
   }
 
   try {
-    const result = await generateMemoryAnswer(parsed.data.question, retrieved);
+    const locale = await getLocale();
+    const result = await generateMemoryAnswer(parsed.data.question, retrieved, locale);
     const cited = retrieved.filter((m) => result.citedMemoryIds.includes(m.id));
     return { data: { answer: result.answer, citedMemories: cited.length > 0 ? cited : retrieved.slice(0, 3) } };
   } catch (aiError) {

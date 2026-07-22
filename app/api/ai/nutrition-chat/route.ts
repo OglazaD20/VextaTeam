@@ -5,6 +5,7 @@ import { z } from "zod";
 import { runNutritionChatTurn } from "@/lib/ai/nutrition-chat";
 import { awardXpAndCheckAchievements } from "@/lib/gamification/engine";
 import { createClient } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/get-locale";
 
 const bodySchema = z.object({
   message: z.string().trim().min(1).max(1000),
@@ -82,7 +83,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await runNutritionChatTurn({ supabase, userId: user.id, timeZone }, history);
+    const locale = await getLocale();
+    const result = await runNutritionChatTurn({ supabase, userId: user.id, timeZone, locale }, history);
 
     await supabase.from("ai_messages").insert({
       conversation_id: conversationId,

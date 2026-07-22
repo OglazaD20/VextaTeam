@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const breakdownSchema = z.object({
   milestones: z.array(z.string().min(1).max(120)).min(3).max(8),
@@ -30,7 +32,10 @@ export interface GoalBreakdownInput {
  * calls elsewhere) — there's no user data to stay faithful to here, just a
  * title/description to turn into a realistic plan.
  */
-export async function generateGoalBreakdown(input: GoalBreakdownInput): Promise<GoalBreakdown> {
+export async function generateGoalBreakdown(
+  input: GoalBreakdownInput,
+  locale: Locale,
+): Promise<GoalBreakdown> {
   const openai = getOpenAIClient();
 
   const response = await openai.chat.completions.create({
@@ -44,7 +49,8 @@ export async function generateGoalBreakdown(input: GoalBreakdownInput): Promise<
           "stopping\", \"Complete a half marathon\", \"Run 30km in training\"). Then produce 2-5 " +
           "specific first tasks the person could start on today or this week to get moving right " +
           "away, each with a realistic duration estimate in minutes. Never be vague (\"work on goal\") " +
-          "— always name a specific, doable action.",
+          "— always name a specific, doable action. " +
+          languageInstruction(locale),
       },
       {
         role: "user",

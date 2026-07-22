@@ -7,6 +7,7 @@ import { pushIfGoogleConnected } from "@/lib/calendar/sync";
 import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/get-locale";
 import type { Tables } from "@/types/database";
 import {
   addEventSchema,
@@ -244,17 +245,21 @@ export async function generateSimilarActivities(
 
   const data = parsed.data;
   try {
-    const suggestions = await discoverActivities({
-      categories: [data.category],
-      location: data.location,
-      maxDistanceKm: data.maxDistanceKm,
-      availableMinutes: data.availableMinutes,
-      budget: data.budget,
-      indoorOutdoor: data.indoorOutdoor,
-      social: data.social,
-      excludePlaceNames: [data.referencePlaceName],
-      similarTo: { placeName: data.referencePlaceName, pitch: data.referencePitch },
-    });
+    const locale = await getLocale();
+    const suggestions = await discoverActivities(
+      {
+        categories: [data.category],
+        location: data.location,
+        maxDistanceKm: data.maxDistanceKm,
+        availableMinutes: data.availableMinutes,
+        budget: data.budget,
+        indoorOutdoor: data.indoorOutdoor,
+        social: data.social,
+        excludePlaceNames: [data.referencePlaceName],
+        similarTo: { placeName: data.referencePlaceName, pitch: data.referencePitch },
+      },
+      locale,
+    );
     return { suggestions };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Couldn't find similar activities" };

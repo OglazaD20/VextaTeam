@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateCoaching } from "@/lib/ai/generate-coaching";
+import { getLocale } from "@/lib/i18n/get-locale";
 import {
   computeBurnoutSignal,
   computeHydrationTimingSignal,
@@ -214,7 +215,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await generateCoaching({ period, ...signals });
+    const locale = await getLocale();
+    const result = await generateCoaching({ period, ...signals }, locale);
 
     await supabase.from("coach_insights").insert({
       user_id: user.id,

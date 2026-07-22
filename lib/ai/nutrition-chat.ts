@@ -3,10 +3,12 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { AI_MODEL_CHAT, getOpenAIClient } from "@/lib/ai/client";
 import type { ToolContext } from "@/lib/ai/chat-tools";
 import { executeNutritionTool, NUTRITION_CHAT_TOOLS, type NutritionChatSummary } from "@/lib/ai/nutrition-chat-tools";
+import { languageInstruction } from "@/lib/ai/language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const MAX_TOOL_ITERATIONS = 4;
 
-function systemPrompt(): string {
+function systemPrompt(locale: Locale): string {
   return [
     "You are the Nutrition Chat inside LifeFlow, a friendly food and nutrition assistant. You help with",
     "questions like calorie/macro lookups, meal ideas, meal plans, and general nutrition education, and you",
@@ -23,6 +25,7 @@ function systemPrompt(): string {
     "Keep replies short and conversational — a few sentences, plain language, explain concepts simply.",
     "When you call log_food_items, your reply should summarize what was logged in one sentence; the app",
     "shows the exact numbers in a card below your message, so don't repeat every macro in a list.",
+    languageInstruction(locale),
   ].join(" ");
 }
 
@@ -37,7 +40,7 @@ export async function runNutritionChatTurn(
 ): Promise<NutritionChatResult> {
   const openai = getOpenAIClient();
   const messages: ChatCompletionMessageParam[] = [
-    { role: "system", content: systemPrompt() },
+    { role: "system", content: systemPrompt(ctx.locale) },
     ...history,
   ];
 
