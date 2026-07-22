@@ -29,12 +29,18 @@ export default async function AppLayout({
   // Best-effort: runs after the response is sent so it never blocks a page navigation.
   after(() => generateContextualNotifications(supabase, user.id, timeZone).catch(() => {}));
 
-  const { data: notifications } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const [{ data: notifications }, { data: equips }] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase.from("user_reward_equips").select("category, reward_id").eq("user_id", user.id),
+  ]);
+
+  const equippedThemeId = equips?.find((e) => e.category === "theme")?.reward_id ?? "theme_default";
+  const equippedFrameId = equips?.find((e) => e.category === "frame")?.reward_id ?? "frame_none";
 
   return (
     <AppShell
@@ -44,6 +50,8 @@ export default async function AppLayout({
         avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
       }}
       notifications={notifications ?? []}
+      equippedThemeId={equippedThemeId}
+      equippedFrameId={equippedFrameId}
     >
       {children}
     </AppShell>

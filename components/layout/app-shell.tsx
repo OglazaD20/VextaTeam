@@ -16,15 +16,19 @@ export function AppShell({
   children,
   user,
   notifications,
+  equippedThemeId,
+  equippedFrameId,
 }: {
   children: React.ReactNode;
   user: { name: string | null; email: string | null; avatarUrl: string | null };
   notifications: Tables<"notifications">[];
+  equippedThemeId: string;
+  equippedFrameId: string;
 }) {
   const [isMobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background" data-reward-theme={equippedThemeId}>
       <div className="hidden lg:flex">
         <Sidebar />
       </div>
@@ -45,6 +49,7 @@ export function AppShell({
           onOpenMobileNav={() => setMobileNavOpen(true)}
           user={user}
           notifications={notifications}
+          equippedFrameId={equippedFrameId}
         />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>

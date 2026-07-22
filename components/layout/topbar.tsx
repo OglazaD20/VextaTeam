@@ -13,10 +13,12 @@ export function TopBar({
   onOpenMobileNav,
   user,
   notifications,
+  equippedFrameId,
 }: {
   onOpenMobileNav: () => void;
   user: { name: string | null; email: string | null; avatarUrl: string | null };
   notifications: Tables<"notifications">[];
+  equippedFrameId: string;
 }) {
   const toggleChat = useUIStore((state) => state.toggleChat);
   const today = new Date().toLocaleDateString(undefined, {
@@ -51,7 +53,7 @@ export function TopBar({
         </Button>
         <NotificationsBell notifications={notifications} />
         <ThemeToggle />
-        <UserMenu {...user} />
+        <UserMenu {...user} equippedFrameId={equippedFrameId} />
       </div>
     </header>
   );

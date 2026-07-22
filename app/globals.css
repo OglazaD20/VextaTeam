@@ -108,6 +108,80 @@
   --water: oklch(0.72 0.12 230);
 }
 
+/* Reward: equippable accent themes (lib/rewards/rewards.ts). Scoped to a
+   [data-reward-theme] attribute on the app shell root so unequipped users
+   keep the default palette above untouched. */
+[data-reward-theme="theme_sunset"] {
+  --primary: oklch(0.65 0.18 45);
+  --ring: oklch(0.65 0.18 45 / 0.5);
+  --accent: oklch(0.95 0.05 45);
+}
+.dark [data-reward-theme="theme_sunset"] {
+  --primary: oklch(0.75 0.16 45);
+  --ring: oklch(0.75 0.16 45 / 0.5);
+  --accent: oklch(0.3 0.06 45);
+}
+[data-reward-theme="theme_forest"] {
+  --primary: oklch(0.55 0.15 150);
+  --ring: oklch(0.55 0.15 150 / 0.5);
+  --accent: oklch(0.95 0.03 150);
+}
+.dark [data-reward-theme="theme_forest"] {
+  --primary: oklch(0.72 0.14 150);
+  --ring: oklch(0.72 0.14 150 / 0.5);
+  --accent: oklch(0.28 0.04 150);
+}
+[data-reward-theme="theme_royal"] {
+  --primary: oklch(0.5 0.19 300);
+  --ring: oklch(0.5 0.19 300 / 0.5);
+  --accent: oklch(0.95 0.03 300);
+}
+.dark [data-reward-theme="theme_royal"] {
+  --primary: oklch(0.72 0.16 300);
+  --ring: oklch(0.72 0.16 300 / 0.5);
+  --accent: oklch(0.28 0.05 300);
+}
+[data-reward-theme="theme_rose"] {
+  --primary: oklch(0.6 0.19 10);
+  --ring: oklch(0.6 0.19 10 / 0.5);
+  --accent: oklch(0.95 0.04 10);
+}
+.dark [data-reward-theme="theme_rose"] {
+  --primary: oklch(0.75 0.16 10);
+  --ring: oklch(0.75 0.16 10 / 0.5);
+  --accent: oklch(0.3 0.05 10);
+}
+[data-reward-theme="theme_midnight_gold"] {
+  --primary: oklch(0.62 0.15 85);
+  --ring: oklch(0.62 0.15 85 / 0.5);
+  --accent: oklch(0.95 0.04 85);
+}
+.dark [data-reward-theme="theme_midnight_gold"] {
+  --primary: oklch(0.78 0.14 85);
+  --ring: oklch(0.78 0.14 85 / 0.5);
+  --accent: oklch(0.3 0.05 85);
+}
+
+/* Reward: the "Legendary Aura" avatar frame — an animated gradient ring. */
+@keyframes reward-frame-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.reward-frame-legendary {
+  position: relative;
+  isolation: isolate;
+}
+.reward-frame-legendary::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  background: conic-gradient(from 0deg, #a855f7, #ec4899, #eab308, #22c55e, #3b82f6, #a855f7);
+  animation: reward-frame-spin 3s linear infinite;
+  z-index: -1;
+}
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

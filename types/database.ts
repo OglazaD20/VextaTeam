@@ -905,6 +905,7 @@ export interface Database {
           xp: number;
           coins: number;
           updated_at: string;
+          achievements_last_seen_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["user_stats"]["Row"]> & { user_id: string };
         Update: Partial<Database["public"]["Tables"]["user_stats"]["Row"]>;
@@ -941,6 +942,35 @@ export interface Database {
           source: string;
         };
         Update: Partial<Database["public"]["Tables"]["xp_events"]["Row"]>;
+        Relationships: [];
+      };
+      user_rewards: {
+        Row: {
+          id: string;
+          user_id: string;
+          reward_id: string;
+          unlocked_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_rewards"]["Row"]> & {
+          user_id: string;
+          reward_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_rewards"]["Row"]>;
+        Relationships: [];
+      };
+      user_reward_equips: {
+        Row: {
+          user_id: string;
+          category: string;
+          reward_id: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_reward_equips"]["Row"]> & {
+          user_id: string;
+          category: string;
+          reward_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_reward_equips"]["Row"]>;
         Relationships: [];
       };
     };

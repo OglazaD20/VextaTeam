@@ -13,15 +13,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { REWARDS_BY_ID } from "@/lib/rewards/rewards";
+import { cn } from "@/lib/utils";
 
 export function UserMenu({
   name,
   email,
   avatarUrl,
+  equippedFrameId,
 }: {
   name: string | null;
   email: string | null;
   avatarUrl: string | null;
+  equippedFrameId: string;
 }) {
   const initials = (name ?? email ?? "?")
     .split(" ")
@@ -30,13 +34,20 @@ export function UserMenu({
     .slice(0, 2)
     .toUpperCase();
 
+  const frame = REWARDS_BY_ID.get(equippedFrameId)?.frame;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Avatar>
-          {avatarUrl && <AvatarImage src={avatarUrl} alt={name ?? "Avatar"} />}
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
+        <span
+          className={cn("flex rounded-full p-0.5", frame?.legendary && "reward-frame-legendary")}
+          style={frame?.ringColor ? { boxShadow: `0 0 0 2px ${frame.ringColor}` } : undefined}
+        >
+          <Avatar>
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={name ?? "Avatar"} />}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="font-normal">

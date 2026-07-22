@@ -3,6 +3,7 @@ import { toZonedTime } from "date-fns-tz";
 import { getHabitsWithStreaks } from "@/lib/habits/get-habits-with-streaks";
 import { ACHIEVEMENTS, ACHIEVEMENTS_BY_ID, type AchievementDef, type StatKey } from "@/lib/gamification/achievements";
 import { computeLevel, computeLevelProgress, type LevelProgress } from "@/lib/gamification/leveling";
+import { REWARDS, type RewardDef } from "@/lib/rewards/rewards";
 import type { createClient } from "@/lib/supabase/server";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -165,6 +166,7 @@ function computeUnderBudgetMonths(
 
 export interface AwardResult {
   newlyUnlocked: AchievementDef[];
+  newlyUnlockedRewards: RewardDef[];
   totalXpAwarded: number;
   totalCoinsAwarded: number;
   levelUp: boolean;
@@ -204,7 +206,13 @@ export async function awardXpAndCheckAchievements(
   xp: number,
   coins = 0,
 ): Promise<AwardResult> {
-  const empty: AwardResult = { newlyUnlocked: [], totalXpAwarded: 0, totalCoinsAwarded: 0, levelUp: false };
+  const empty: AwardResult = {
+    newlyUnlocked: [],
+    newlyUnlockedRewards: [],
+    totalXpAwarded: 0,
+    totalCoinsAwarded: 0,
+    levelUp: false,
+  };
 
   try {
     const { data: existingStats } = await supabase.from("user_stats").select("xp, coins").eq("user_id", userId).maybeSingle();
@@ -214,6 +222,7 @@ export async function awardXpAndCheckAchievements(
     const awarded = await awardXpEvent(supabase, userId, source, relatedId, xp, coins);
     let totalXp = awarded ? xp : 0;
     let totalCoins = awarded ? coins : 0;
+    const newlyUnlockedRewards: RewardDef[] = [];
 
     const { data: existingUnlocks } = await supabase.from("user_achievements").select("achievement_id").eq("user_id", userId);
     const unlockedIds = new Set((existingUnlocks ?? []).map((u) => u.achievement_id));
@@ -224,11 +233,12 @@ export async function awardXpAndCheckAchievements(
     let newlyUnlocked = findNewlyUnlocked(snapshot, unlockedIds);
 
     for (const def of newlyUnlocked) {
-      const ok = await unlockAchievement(supabase, userId, def);
-      if (ok) {
+      const result = await unlockAchievement(supabase, userId, def);
+      if (result.ok) {
         totalXp += def.xp;
         totalCoins += def.coins;
         unlockedIds.add(def.id);
+        newlyUnlockedRewards.push(...result.rewards);
       }
     }
 
@@ -236,11 +246,12 @@ export async function awardXpAndCheckAchievements(
       snapshot = await computeUserStatsSnapshot(supabase, userId, timeZone, xpBefore + totalXp);
       const secondPass = findNewlyUnlocked(snapshot, unlockedIds);
       for (const def of secondPass) {
-        const ok = await unlockAchievement(supabase, userId, def);
-        if (ok) {
+        const result = await unlockAchievement(supabase, userId, def);
+        if (result.ok) {
           totalXp += def.xp;
           totalCoins += def.coins;
           unlockedIds.add(def.id);
+          newlyUnlockedRewards.push(...result.rewards);
         }
       }
       newlyUnlocked = [...newlyUnlocked, ...secondPass];
@@ -259,6 +270,7 @@ export async function awardXpAndCheckAchievements(
 
     return {
       newlyUnlocked,
+      newlyUnlockedRewards,
       totalXpAwarded: totalXp,
       totalCoinsAwarded: totalCoins,
       levelUp: computeLevel(xpAfter) > levelBefore,
@@ -272,15 +284,27 @@ function findNewlyUnlocked(snapshot: UserStatsSnapshot, alreadyUnlocked: Set<str
   return ACHIEVEMENTS.filter((def) => !alreadyUnlocked.has(def.id) && snapshot[def.statKey] >= def.target);
 }
 
-async function unlockAchievement(supabase: SupabaseServerClient, userId: string, def: AchievementDef): Promise<boolean> {
+async function unlockAchievement(
+  supabase: SupabaseServerClient,
+  userId: string,
+  def: AchievementDef,
+): Promise<{ ok: boolean; rewards: RewardDef[] }> {
   const { error } = await supabase.from("user_achievements").insert({
     user_id: userId,
     achievement_id: def.id,
     progress_current: def.target,
   });
-  if (error) return false;
+  if (error) return { ok: false, rewards: [] };
   await awardXpEvent(supabase, userId, "achievement_unlocked", def.id, def.xp, def.coins);
-  return true;
+
+  const matchingRewards = REWARDS.filter((r) => r.unlockAchievementId === def.id);
+  const grantedRewards: RewardDef[] = [];
+  for (const reward of matchingRewards) {
+    const { error: rewardError } = await supabase.from("user_rewards").insert({ user_id: userId, reward_id: reward.id });
+    if (!rewardError) grantedRewards.push(reward);
+  }
+
+  return { ok: true, rewards: grantedRewards };
 }
 
 export interface UserProgressSummary {

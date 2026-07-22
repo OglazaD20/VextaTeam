@@ -295,3 +295,5 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 ];
 
 export const ACHIEVEMENTS_BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
+
+export type AchievementId = (typeof ACHIEVEMENTS)[number]["id"];
