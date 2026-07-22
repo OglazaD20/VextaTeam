@@ -20,32 +20,27 @@ const MEAL_TYPE_LABEL: Record<MealType, string> = {
   drink: "Drink",
 };
 
-function describeQuantity(item: NutritionChatSummary["items"][number]): string {
-  if (item.quantityGrams) return `${item.quantityGrams}g`;
-  if (item.quantityServings) return `${item.quantityServings}×`;
-  return "1×";
-}
-
 export function NutritionFoodSummaryCard({ summary }: { summary: NutritionChatSummary }) {
   const [mealType, setMealType] = React.useState<MealType>(() => guessMealType(new Date().getHours()));
   const [isPending, startTransition] = React.useTransition();
   const [isLogged, setIsLogged] = React.useState(false);
 
-  const loggableItems = summary.items.filter((item) => item.matched && item.macros);
+  const loggableItems = summary.items;
 
   function handleAdd() {
     startTransition(async () => {
       const result = await logFoodItemsBulk(
         loggableItems.map((item) => ({
-          foodId: item.matched!.id,
-          quantity: item.servingMultiplier,
-          calories: item.macros!.calories,
-          proteinG: item.macros!.proteinG,
-          fatG: item.macros!.fatG,
-          carbsG: item.macros!.carbsG,
-          fiberG: item.macros!.fiberG,
-          sugarG: item.macros!.sugarG,
-          sodiumMg: item.macros!.sodiumMg,
+          foodId: null,
+          name: item.name,
+          quantity: 1,
+          calories: item.macros.calories,
+          proteinG: item.macros.proteinG,
+          fatG: item.macros.fatG,
+          carbsG: item.macros.carbsG,
+          fiberG: item.macros.fiberG,
+          sugarG: item.macros.sugarG,
+          sodiumMg: item.macros.sodiumMg,
           mealType,
         })),
       );
@@ -65,13 +60,9 @@ export function NutritionFoodSummaryCard({ summary }: { summary: NutritionChatSu
         {summary.items.map((item, index) => (
           <div key={index} className="flex items-center justify-between gap-2 text-xs">
             <span className="text-muted-foreground">
-              {describeQuantity(item)} {item.query}
+              {item.quantityDescription} {item.name}
             </span>
-            {item.macros ? (
-              <span className="font-medium">{Math.round(item.macros.calories)} kcal</span>
-            ) : (
-              <span className="text-destructive">not found</span>
-            )}
+            <span className="font-medium">{Math.round(item.macros.calories)} kcal</span>
           </div>
         ))}
       </div>

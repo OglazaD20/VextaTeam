@@ -500,6 +500,7 @@ export interface Database {
           sugar_g: number;
           sodium_mg: number;
           notes: string | null;
+          name: string | null;
           created_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["food_logs"]["Row"]> & {

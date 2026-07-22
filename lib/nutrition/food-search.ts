@@ -37,10 +37,9 @@ function fromRow(row: Tables<"foods">): FoodSearchResult {
 }
 
 /**
- * Shared food lookup used by the manual search dialog (app/api/nutrition/search)
- * and the nutrition AI chat's search_food tool — one code path, so both
- * always return the same real, DB-backed numbers instead of the chat ever
- * inventing a food's nutrition facts.
+ * Food lookup used by app/api/nutrition/search — now only for picking
+ * ingredients when building a saved recipe. Everyday food logging goes
+ * through the AI Nutrition Chat's own estimate instead of this lookup.
  */
 export async function searchFoods(
   supabase: SupabaseServerClient,

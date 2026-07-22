@@ -1,25 +1,9 @@
 import type { ChatCompletionTool } from "openai/resources/chat/completions";
 
 import { getNutritionSummary, type ToolContext } from "@/lib/ai/chat-tools";
-import { searchFoods, type FoodSearchResult } from "@/lib/nutrition/food-search";
-import { computeServingMultiplier } from "@/lib/nutrition/quantity";
-import { scaleMacros, sumMacros, type Macros } from "@/lib/nutrition/macros";
+import { sumMacros, type Macros } from "@/lib/nutrition/macros";
 
 export const NUTRITION_CHAT_TOOLS: ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "search_food",
-      description:
-        "Look up a food's real nutrition facts (calories, protein, fat, carbs) per serving. Always call this before stating a specific food's numbers — never state a calorie/macro figure from memory.",
-      parameters: {
-        type: "object",
-        properties: { query: { type: "string", description: "The food name, e.g. 'banana' or 'chicken breast'." } },
-        required: ["query"],
-        additionalProperties: false,
-      },
-    },
-  },
   {
     type: "function",
     function: {
@@ -41,10 +25,11 @@ export const NUTRITION_CHAT_TOOLS: ChatCompletionTool[] = [
     function: {
       name: "log_food_items",
       description:
-        "Compute real nutrition totals for food items the user says they ate (e.g. 'two apples and 150g of chicken breast'). " +
-        "Give one entry per distinct food. Set exactly one of quantityGrams or quantityServings per item — quantityGrams for " +
-        "a weight/volume amount ('150g', '200ml'), quantityServings for a count (e.g. 'two apples' -> quantityServings: 2). " +
-        "This returns the real computed totals — always report exactly the numbers it returns, never adjust them.",
+        "Log food items the user has confirmed they ate (e.g. they answered yes to 'did you eat this?', or " +
+        "clearly stated it in the past tense — 'I ate two eggs'). Use your own best nutrition estimate for each " +
+        "item — there is no database to look up, estimate the way a knowledgeable nutritionist would from the " +
+        "food and quantity described, accounting for typical preparation. Report exactly the numbers you pass " +
+        "here back to the user; they are logged as-is, never recomputed.",
       parameters: {
         type: "object",
         properties: {
@@ -53,11 +38,18 @@ export const NUTRITION_CHAT_TOOLS: ChatCompletionTool[] = [
             items: {
               type: "object",
               properties: {
-                query: { type: "string", description: "The food name to look up." },
-                quantityGrams: { type: ["number", "null"] },
-                quantityServings: { type: ["number", "null"] },
+                name: { type: "string", description: "Short food name, e.g. 'Scrambled eggs'." },
+                quantityDescription: {
+                  type: "string",
+                  description: "The amount eaten, in the user's own terms, e.g. '2 large eggs' or '250g grilled chicken breast'.",
+                },
+                calories: { type: "number", minimum: 0 },
+                proteinG: { type: "number", minimum: 0 },
+                carbsG: { type: "number", minimum: 0 },
+                fatG: { type: "number", minimum: 0 },
+                fiberG: { type: "number", minimum: 0 },
               },
-              required: ["query", "quantityGrams", "quantityServings"],
+              required: ["name", "quantityDescription", "calories", "proteinG", "carbsG", "fatG", "fiberG"],
               additionalProperties: false,
             },
           },
@@ -70,22 +62,14 @@ export const NUTRITION_CHAT_TOOLS: ChatCompletionTool[] = [
 ];
 
 export interface LoggedFoodItem {
-  query: string;
-  matched: FoodSearchResult | null;
-  quantityGrams: number | null;
-  quantityServings: number | null;
-  servingMultiplier: number;
-  macros: Macros | null;
+  name: string;
+  quantityDescription: string;
+  macros: Macros;
 }
 
 export interface NutritionChatSummary {
   items: LoggedFoodItem[];
   totals: Macros;
-}
-
-async function searchFood(ctx: ToolContext, args: { query: string }) {
-  const results = await searchFoods(ctx.supabase, ctx.userId, args.query);
-  return { results: results.slice(0, 5) };
 }
 
 async function getNutritionGoals(ctx: ToolContext) {
@@ -104,59 +88,34 @@ async function getNutritionGoals(ctx: ToolContext) {
   };
 }
 
-export async function logFoodItems(
-  ctx: ToolContext,
-  args: { items: { query: string; quantityGrams: number | null; quantityServings: number | null }[] },
-): Promise<NutritionChatSummary> {
-  const items: LoggedFoodItem[] = [];
+interface LogFoodItemsArgs {
+  items: {
+    name: string;
+    quantityDescription: string;
+    calories: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
+    fiberG: number;
+  }[];
+}
 
-  for (const item of args.items) {
-    const results = await searchFoods(ctx.supabase, ctx.userId, item.query);
-    const matched = results[0] ?? null;
+export async function logFoodItems(args: LogFoodItemsArgs): Promise<NutritionChatSummary> {
+  const items: LoggedFoodItem[] = args.items.map((item) => ({
+    name: item.name,
+    quantityDescription: item.quantityDescription,
+    macros: {
+      calories: item.calories,
+      proteinG: item.proteinG,
+      carbsG: item.carbsG,
+      fatG: item.fatG,
+      fiberG: item.fiberG,
+      sugarG: 0,
+      sodiumMg: 0,
+    },
+  }));
 
-    if (!matched) {
-      items.push({
-        query: item.query,
-        matched: null,
-        quantityGrams: item.quantityGrams,
-        quantityServings: item.quantityServings,
-        servingMultiplier: 0,
-        macros: null,
-      });
-      continue;
-    }
-
-    const servingMultiplier = computeServingMultiplier(
-      item.quantityGrams,
-      item.quantityServings,
-      matched.serving_size,
-      matched.serving_unit,
-    );
-
-    const macros = scaleMacros(
-      {
-        calories: matched.calories,
-        proteinG: matched.protein_g,
-        fatG: matched.fat_g,
-        carbsG: matched.carbs_g,
-        fiberG: matched.fiber_g,
-        sugarG: matched.sugar_g,
-        sodiumMg: matched.sodium_mg,
-      },
-      servingMultiplier,
-    );
-
-    items.push({
-      query: item.query,
-      matched,
-      quantityGrams: item.quantityGrams,
-      quantityServings: item.quantityServings,
-      servingMultiplier,
-      macros,
-    });
-  }
-
-  const totals = sumMacros(items.map((i) => i.macros).filter((m): m is Macros => m !== null));
+  const totals = sumMacros(items.map((i) => i.macros));
 
   return { items, totals };
 }
@@ -167,17 +126,12 @@ export async function executeNutritionTool(
   args: Record<string, unknown>,
 ): Promise<unknown> {
   switch (name) {
-    case "search_food":
-      return searchFood(ctx, args as { query: string });
     case "get_today_nutrition_summary":
       return getNutritionSummary(ctx);
     case "get_nutrition_goals":
       return getNutritionGoals(ctx);
     case "log_food_items":
-      return logFoodItems(
-        ctx,
-        args as { items: { query: string; quantityGrams: number | null; quantityServings: number | null }[] },
-      );
+      return logFoodItems(args as unknown as LogFoodItemsArgs);
     default:
       return { error: `Unknown tool: ${name}` };
   }

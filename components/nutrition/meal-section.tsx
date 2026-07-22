@@ -6,7 +6,6 @@ import { toast } from "sonner";
 
 import { deleteFoodLog, duplicateFoodLog } from "@/app/(app)/nutrition/actions";
 import { FoodLogEditDialog } from "@/components/nutrition/food-log-edit-dialog";
-import { FoodSearchDialog } from "@/components/nutrition/food-search-dialog";
 import { SaveTemplateDialog } from "@/components/nutrition/save-template-dialog";
 import {
   DropdownMenu,
@@ -124,7 +123,6 @@ export function MealSection({
         </div>
         <div className="flex items-center gap-1">
           <SaveTemplateDialog mealType={mealType} items={templateItems} />
-          <FoodSearchDialog mealType={mealType} />
         </div>
       </div>
 

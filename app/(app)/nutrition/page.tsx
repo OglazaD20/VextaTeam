@@ -89,7 +89,7 @@ export default async function NutritionPage() {
     const entry: FoodLogEntry = {
       id: log.id,
       foodId: log.food_id,
-      name: log.food_id ? (namesByFoodId.get(log.food_id) ?? "Food") : "Food",
+      name: log.food_id ? (namesByFoodId.get(log.food_id) ?? "Food") : (log.name ?? "Food"),
       calories: log.calories,
       proteinG: log.protein_g,
       fatG: log.fat_g,

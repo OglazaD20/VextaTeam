@@ -352,101 +352,6 @@ export async function createAndLogFood(formData: FormData): Promise<ActionResult
   return {};
 }
 
-export async function toggleFavoriteFood(foodId: string): Promise<ActionResult<{ isFavorite: boolean }>> {
-  const { supabase, user } = await requireUser();
-
-  const { data: existing } = await supabase
-    .from("user_favorite_foods")
-    .select("food_id")
-    .eq("user_id", user.id)
-    .eq("food_id", foodId)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from("user_favorite_foods")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("food_id", foodId);
-    if (error) return { error: error.message };
-    revalidateNutrition();
-    return { data: { isFavorite: false } };
-  }
-
-  const { error } = await supabase
-    .from("user_favorite_foods")
-    .insert({ user_id: user.id, food_id: foodId });
-  if (error) return { error: error.message };
-  revalidateNutrition();
-  return { data: { isFavorite: true } };
-}
-
-export async function getFavoriteFoods(): Promise<ActionResult<Tables<"foods">[]>> {
-  const { supabase, user } = await requireUser();
-
-  const { data: favorites, error } = await supabase
-    .from("user_favorite_foods")
-    .select("food_id")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
-  if (error) return { error: error.message };
-
-  const foodIds = (favorites ?? []).map((f) => f.food_id);
-  if (foodIds.length === 0) return { data: [] };
-
-  const { data: foods, error: foodsError } = await supabase
-    .from("foods")
-    .select("*")
-    .in("id", foodIds);
-
-  if (foodsError) return { error: foodsError.message };
-
-  const order = new Map(foodIds.map((id, i) => [id, i]));
-  const sorted = [...(foods ?? [])].sort(
-    (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
-  );
-  return { data: sorted };
-}
-
-export async function getRecentFoods(limit = 12): Promise<ActionResult<Tables<"foods">[]>> {
-  const { supabase, user } = await requireUser();
-
-  const { data: logs, error } = await supabase
-    .from("food_logs")
-    .select("food_id, logged_at")
-    .eq("user_id", user.id)
-    .not("food_id", "is", null)
-    .order("logged_at", { ascending: false })
-    .limit(60);
-
-  if (error) return { error: error.message };
-
-  const seen = new Set<string>();
-  const orderedIds: string[] = [];
-  for (const log of logs ?? []) {
-    if (!log.food_id || seen.has(log.food_id)) continue;
-    seen.add(log.food_id);
-    orderedIds.push(log.food_id);
-    if (orderedIds.length >= limit) break;
-  }
-
-  if (orderedIds.length === 0) return { data: [] };
-
-  const { data: foods, error: foodsError } = await supabase
-    .from("foods")
-    .select("*")
-    .in("id", orderedIds);
-
-  if (foodsError) return { error: foodsError.message };
-
-  const order = new Map(orderedIds.map((id, i) => [id, i]));
-  const sorted = [...(foods ?? [])].sort(
-    (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
-  );
-  return { data: sorted };
-}
-
 export async function logWater(formData: FormData): Promise<ActionResult> {
   const parsed = logWaterSchema.safeParse({ amountMl: formData.get("amountMl") });
 
@@ -825,7 +730,8 @@ export async function deleteRecipe(foodId: string): Promise<ActionResult> {
 }
 
 export interface LogFoodItemInput {
-  foodId: string;
+  foodId: string | null;
+  name: string;
   quantity: number;
   calories: number;
   proteinG: number;
@@ -837,7 +743,7 @@ export interface LogFoodItemInput {
   mealType: MealType;
 }
 
-/** Confirms and commits nutrition items the AI chat computed — the numbers come pre-scaled from the chat's own computation, never recomputed here, so what the user saw is exactly what gets logged. */
+/** Confirms and commits nutrition items the AI chat estimated — the numbers come from the chat's own estimate, never recomputed here, so what the user saw is exactly what gets logged. */
 export async function logFoodItemsBulk(items: LogFoodItemInput[]): Promise<ActionResult> {
   if (items.length === 0) return { error: "No items to log" };
 
@@ -849,6 +755,7 @@ export async function logFoodItemsBulk(items: LogFoodItemInput[]): Promise<Actio
       items.map((item) => ({
         user_id: user.id,
         food_id: item.foodId,
+        name: item.name,
         meal_type: item.mealType,
         quantity: item.quantity,
         calories: item.calories,
