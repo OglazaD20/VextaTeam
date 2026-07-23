@@ -12,6 +12,19 @@ const categoryEnum = z.enum(
   Object.keys(ACTIVITY_CATEGORIES) as [keyof typeof ACTIVITY_CATEGORIES],
 );
 
+const smartFiltersSchema = z.object({
+  openOnly: z.boolean().optional(),
+  minRating: z.number().min(0).max(5).optional(),
+  maxTravelMinutes: z.number().int().positive().max(1440).optional(),
+  wheelchairAccessible: z.boolean().optional(),
+  popular: z.boolean().optional(),
+  hiddenGems: z.boolean().optional(),
+  freeOnly: z.boolean().optional(),
+  luxury: z.boolean().optional(),
+  fastVisit: z.boolean().optional(),
+  longActivities: z.boolean().optional(),
+});
+
 const bodySchema = z.object({
   categories: z.array(categoryEnum).min(1).max(6),
   location: z.object({ lat: z.number(), lng: z.number() }),
@@ -20,6 +33,9 @@ const bodySchema = z.object({
   budget: z.enum(["free", "low", "medium", "high"]),
   indoorOutdoor: z.enum(["indoor", "outdoor", "any"]),
   social: z.enum(["solo", "group", "any"]),
+  resultCount: z.number().int().min(3).max(50).optional(),
+  smartFilters: smartFiltersSchema.optional(),
+  preferenceHints: z.array(z.enum(["familyFriendly", "petFriendly", "romantic"])).max(3).optional(),
 });
 
 export async function POST(request: Request) {

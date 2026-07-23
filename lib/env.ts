@@ -17,6 +17,8 @@ const serverEnvSchema = clientEnvSchema.extend({
   USDA_FDC_API_KEY: z.string().min(1).optional(),
   PLACES_API_KEY: z.string().min(1).optional(),
   TICKETMASTER_API_KEY: z.string().min(1).optional(),
+  GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
+  TRIPADVISOR_API_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),
 });
@@ -36,6 +38,8 @@ function parseEnv() {
     USDA_FDC_API_KEY: process.env.USDA_FDC_API_KEY,
     PLACES_API_KEY: process.env.PLACES_API_KEY,
     TICKETMASTER_API_KEY: process.env.TICKETMASTER_API_KEY,
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
+    TRIPADVISOR_API_KEY: process.env.TRIPADVISOR_API_KEY,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
   });

@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import {
+  AccessibilityIcon,
   ClockIcon,
   ExternalLinkIcon,
   MapPinIcon,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { addSuggestionToSchedule, saveActivity } from "@/app/(app)/discover/actions";
 import { MapPreview } from "@/components/discover/map-preview";
 import { ScheduleSuggestionDialog } from "@/components/discover/schedule-suggestion-dialog";
+import { ResilientImage } from "@/components/shared/resilient-image";
 import { ACTIVITY_CATEGORY_ICON, ACTIVITY_CATEGORY_LABEL } from "@/lib/activities/category-style";
 import { shareOrCopy } from "@/lib/activities/share";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,12 @@ import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/hooks/use-ui-store";
 import type { ActivitySuggestion } from "@/lib/activities/discover";
 import { cn } from "@/lib/utils";
+
+const SOURCE_LABEL: Record<ActivitySuggestion["sources"][number], string> = {
+  geoapify: "Geoapify",
+  google: "Google",
+  tripadvisor: "TripAdvisor",
+};
 
 const COST_LABEL: Record<ActivitySuggestion["costTier"], string> = {
   free: "Free",
@@ -93,9 +101,13 @@ export function SuggestionCard({
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${suggestion.location.lat},${suggestion.location.lng}`;
 
   function handleAskAi() {
+    const ratingNote =
+      suggestion.rating !== null
+        ? ` It's rated ${suggestion.rating.toFixed(1)}★${suggestion.reviewCount !== null ? ` from ${suggestion.reviewCount} reviews` : ""}.`
+        : "";
     askAssistant(
       `Tell me more about ${suggestion.placeName}${suggestion.address ? ` (${suggestion.address})` : ""} — ` +
-        `it's a ${ACTIVITY_CATEGORY_LABEL[suggestion.category].toLowerCase()} place ${suggestion.distanceKm}km away. Is it a good fit for me right now?`,
+        `it's a ${ACTIVITY_CATEGORY_LABEL[suggestion.category].toLowerCase()} place ${suggestion.distanceKm}km away.${ratingNote} Is it a good fit for me right now?`,
     );
   }
 
@@ -110,15 +122,29 @@ export function SuggestionCard({
 
   return (
     <div className="glass-surface flex flex-col gap-3 rounded-2xl border border-border p-4 shadow-sm">
-      <MapPreview
-        lat={suggestion.location.lat}
-        lng={suggestion.location.lng}
-        alt={suggestion.placeName}
-      />
+      {suggestion.imageUrl ? (
+        <ResilientImage
+          src={suggestion.imageUrl}
+          alt={suggestion.placeName}
+          className="h-32 w-full"
+          fallbackIcon={MapPinIcon}
+        />
+      ) : (
+        <MapPreview lat={suggestion.location.lat} lng={suggestion.location.lng} alt={suggestion.placeName} />
+      )}
       <div>
         <div className="flex items-center gap-1.5">
           <span>{ACTIVITY_CATEGORY_ICON[suggestion.category]}</span>
           <p className="font-medium">{suggestion.title}</p>
+          {suggestion.rating !== null && (
+            <span className="flex items-center gap-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              <StarIcon className="size-3 fill-current" />
+              {suggestion.rating.toFixed(1)}
+              {suggestion.reviewCount !== null && (
+                <span className="font-normal text-muted-foreground">({suggestion.reviewCount.toLocaleString()})</span>
+              )}
+            </span>
+          )}
         </div>
         <p className="text-sm text-muted-foreground">{suggestion.pitch}</p>
         {suggestion.whyRecommended && (
@@ -169,6 +195,16 @@ export function SuggestionCard({
         <Badge variant="outline" className="text-[10px]">
           {ACTIVITY_CATEGORY_LABEL[suggestion.category]}
         </Badge>
+        {suggestion.wheelchairAccessible && (
+          <Badge variant="outline" className="flex items-center gap-1 text-[10px]">
+            <AccessibilityIcon className="size-3" /> Accessible
+          </Badge>
+        )}
+        {suggestion.sources.length > 0 && (
+          <span className="text-[10px] text-muted-foreground">
+            via {suggestion.sources.map((s) => SOURCE_LABEL[s]).join(" + ")}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">

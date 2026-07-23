@@ -10,6 +10,7 @@ import { EventCard } from "@/components/discover/event-card";
 import { InteractiveMap, type MapPoint } from "@/components/discover/interactive-map";
 import { LocationSearchBox } from "@/components/discover/location-search-box";
 import { SavedActivitiesList } from "@/components/discover/saved-activities-list";
+import { SmartFiltersPanel, type PreferenceHint } from "@/components/discover/smart-filters-panel";
 import { SuggestionCard } from "@/components/discover/suggestion-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -24,10 +25,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { LatLng } from "@/lib/activities/distance";
-import type { ActivitySuggestion } from "@/lib/activities/discover";
+import type { ActivitySuggestion, DiscoverSmartFilters } from "@/lib/activities/discover";
 import type { ActivityCategory } from "@/lib/activities/geoapify-client";
 import type { EventCandidate } from "@/lib/activities/ticketmaster-client";
 import type { Tables } from "@/types/database";
+
+type ResultCountPreset = "5" | "10" | "20" | "50" | "custom";
 
 type LocationState =
   | { status: "idle" }
@@ -51,6 +54,12 @@ export function DiscoverClient({
   const [budget, setBudget] = React.useState("low");
   const [indoorOutdoor, setIndoorOutdoor] = React.useState("any");
   const [social, setSocial] = React.useState("any");
+  const [resultCountPreset, setResultCountPreset] = React.useState<ResultCountPreset>("10");
+  const [customResultCount, setCustomResultCount] = React.useState("15");
+  const [smartFilters, setSmartFilters] = React.useState<DiscoverSmartFilters>({});
+  const [preferenceHints, setPreferenceHints] = React.useState<PreferenceHint[]>([]);
+  const [minRating, setMinRating] = React.useState("none");
+  const [maxTravelMinutes, setMaxTravelMinutes] = React.useState("none");
 
   const [location, setLocation] = React.useState<LocationState>({ status: "idle" });
   const [isSearching, setIsSearching] = React.useState(false);
@@ -103,6 +112,14 @@ export function DiscoverClient({
       const requests: Promise<void>[] = [];
 
       if (categories.length > 0) {
+        const resultCount =
+          resultCountPreset === "custom" ? Number(customResultCount) : Number(resultCountPreset);
+        const effectiveFilters: DiscoverSmartFilters = {
+          ...smartFilters,
+          ...(minRating !== "none" ? { minRating: Number(minRating) } : {}),
+          ...(maxTravelMinutes !== "none" ? { maxTravelMinutes: Number(maxTravelMinutes) } : {}),
+        };
+
         requests.push(
           fetch("/api/activities/discover", {
             method: "POST",
@@ -115,6 +132,9 @@ export function DiscoverClient({
               budget,
               indoorOutdoor,
               social,
+              resultCount,
+              smartFilters: effectiveFilters,
+              preferenceHints,
             }),
           })
             .then((r) => r.json())
@@ -305,18 +325,65 @@ export function DiscoverClient({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1.5 sm:w-48">
-            <Label htmlFor="social">Company</Label>
-            <Select value={social} onValueChange={setSocial}>
-              <SelectTrigger id="social">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Either</SelectItem>
-                <SelectItem value="solo">Solo</SelectItem>
-                <SelectItem value="group">With others</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-1.5 sm:w-48">
+              <Label htmlFor="social">Company</Label>
+              <Select value={social} onValueChange={setSocial}>
+                <SelectTrigger id="social">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Either</SelectItem>
+                  <SelectItem value="solo">Solo</SelectItem>
+                  <SelectItem value="group">With others</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5 sm:w-40">
+              <Label htmlFor="resultCount">Number of results</Label>
+              <Select
+                value={resultCountPreset}
+                onValueChange={(v) => setResultCountPreset(v as ResultCountPreset)}
+              >
+                <SelectTrigger id="resultCount">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 places</SelectItem>
+                  <SelectItem value="10">10 places</SelectItem>
+                  <SelectItem value="20">20 places</SelectItem>
+                  <SelectItem value="50">50 places</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {resultCountPreset === "custom" && (
+              <div className="flex flex-col gap-1.5 sm:w-28">
+                <Label htmlFor="customResultCount">Custom count</Label>
+                <Input
+                  id="customResultCount"
+                  type="number"
+                  min={3}
+                  max={50}
+                  value={customResultCount}
+                  onChange={(e) => setCustomResultCount(e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Smart filters</Label>
+            <SmartFiltersPanel
+              filters={smartFilters}
+              onChange={setSmartFilters}
+              preferenceHints={preferenceHints}
+              onPreferenceHintsChange={setPreferenceHints}
+              minRating={minRating}
+              onMinRatingChange={setMinRating}
+              maxTravelMinutes={maxTravelMinutes}
+              onMaxTravelMinutesChange={setMaxTravelMinutes}
+            />
           </div>
 
           {location.status === "error" && (
