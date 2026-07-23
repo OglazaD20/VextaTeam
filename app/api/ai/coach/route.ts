@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { generateCoaching } from "@/lib/ai/generate-coaching";
+import { getCurrentWeather, getHourlyForecast } from "@/lib/activities/weather-client";
+import { computeWeatherSuggestions } from "@/lib/weather/planner";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
 import { sendPushToUser } from "@/lib/notifications/push";
@@ -214,6 +216,35 @@ export async function POST(request: Request) {
       { recent: taskRecords, prior: (priorTasks ?? []).map((t) => ({ status: t.status, priority: t.priority, scheduledStart: t.scheduled_start })) },
       { recent: healthRecords, prior: (priorHealth ?? []).map((h) => ({ dateKey: h.logged_for_date, sleepHours: h.sleep_hours, exerciseMinutes: h.exercise_minutes })) },
     );
+  }
+
+  // Weather only matters for "right now" coaching — best-effort, silently
+  // skipped if there's no saved location or the weather API is unreachable.
+  if (period === "daily") {
+    try {
+      const { data: locationSettings } = await supabase
+        .from("user_settings")
+        .select("default_lat, default_lng")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (locationSettings?.default_lat != null && locationSettings?.default_lng != null) {
+        const location = { lat: locationSettings.default_lat, lng: locationSettings.default_lng };
+        const [current, forecast] = await Promise.all([
+          getCurrentWeather(location),
+          getHourlyForecast(location).catch(() => []),
+        ]);
+        signals.weather = {
+          tempC: current.tempC,
+          condition: current.condition,
+          isRaining: current.isRaining,
+          windKph: current.windKph,
+          suggestions: computeWeatherSuggestions(current, forecast).map((s) => s.message),
+        };
+      }
+    } catch {
+      // No weather signal today — the coach just won't reference it.
+    }
   }
 
   try {

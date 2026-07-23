@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CoachPanel } from "@/components/coach/coach-panel";
 import { HabitInsights } from "@/components/habits/habit-insights";
+import { LearningTeaser } from "@/components/learn/learning-teaser";
 import { PredictTeaser } from "@/components/predict/predict-teaser";
 import { WeatherImpactBanner } from "@/components/weather/weather-impact-banner";
 import { HabitStreakList } from "@/components/stats/habit-streak-list";
@@ -43,6 +44,8 @@ export default async function DashboardPage() {
     { data: sessions, error: sessionsError },
     habitsWithStreaks,
     { data: predictions },
+    { data: dueFlashcards },
+    { data: upcomingExamCourses },
   ] = await Promise.all([
     supabase
       .from("schedule_items")
@@ -73,6 +76,16 @@ export default async function DashboardPage() {
       .eq("user_id", user.id)
       .order("confidence_pct", { ascending: false })
       .limit(2),
+    supabase.from("flashcards").select("id").lte("due_at", new Date().toISOString()),
+    supabase
+      .from("courses")
+      .select("title, exam_date")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .not("exam_date", "is", null)
+      .gte("exam_date", new Date().toISOString().slice(0, 10))
+      .order("exam_date", { ascending: true })
+      .limit(1),
   ]);
 
   if (todayError) throw new Error(`Failed to load today's schedule: ${todayError.message}`);
@@ -207,6 +220,25 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <PredictTeaser predictions={predictions ?? []} />
+        </CardContent>
+      </Card>
+
+      <Card className="glass-surface">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Learning Hub</CardTitle>
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/learn">View all</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <LearningTeaser
+            dueFlashcardCount={dueFlashcards?.length ?? 0}
+            nearestExam={
+              upcomingExamCourses?.[0]
+                ? { title: upcomingExamCourses[0].title, examDate: upcomingExamCourses[0].exam_date! }
+                : null
+            }
+          />
         </CardContent>
       </Card>
     </div>
