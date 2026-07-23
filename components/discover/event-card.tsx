@@ -1,13 +1,22 @@
 "use client";
 
 import { useTransition } from "react";
-import { CalendarIcon, MapPinIcon, PlusIcon, Share2Icon, StarIcon, TicketIcon } from "lucide-react";
+import {
+  CalendarIcon,
+  MapPinIcon,
+  MessageCircleQuestionIcon,
+  PlusIcon,
+  Share2Icon,
+  StarIcon,
+  TicketIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { addEventToSchedule, saveActivity } from "@/app/(app)/discover/actions";
 import { ResilientImage } from "@/components/shared/resilient-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useUIStore } from "@/hooks/use-ui-store";
 import type { EventCandidate } from "@/lib/activities/ticketmaster-client";
 import { shareOrCopy } from "@/lib/activities/share";
 
@@ -33,7 +42,14 @@ function formatPrice(event: EventCandidate): string | null {
 export function EventCard({ event }: { event: EventCandidate & { distanceKm: number } }) {
   const [isAdding, startAdding] = useTransition();
   const [isSaving, startSaving] = useTransition();
+  const askAssistant = useUIStore((state) => state.askAssistant);
   const price = formatPrice(event);
+
+  function handleAskAi() {
+    askAssistant(
+      `Tell me more about "${event.name}" at ${event.venueName} on ${formatEventDate(event.startIso)} — is it a good fit for me?`,
+    );
+  }
 
   function handleAdd() {
     if (!event.startIso) {
@@ -139,6 +155,9 @@ export function EventCard({ event }: { event: EventCandidate & { distanceKm: num
         </Button>
         <Button size="sm" variant="ghost" onClick={handleShare}>
           <Share2Icon className="size-3.5" /> Share
+        </Button>
+        <Button size="sm" variant="ghost" onClick={handleAskAi}>
+          <MessageCircleQuestionIcon className="size-3.5" /> Ask AI
         </Button>
         <Button size="sm" variant="ghost" asChild>
           <a href={event.url} target="_blank" rel="noopener noreferrer">

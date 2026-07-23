@@ -1,24 +1,8 @@
 import { env } from "@/lib/env";
 import type { LatLng } from "./distance";
 
-/** User-facing activity categories mapped to Geoapify's Places category taxonomy. */
-export const ACTIVITY_CATEGORIES = {
-  food_drink: "catering.restaurant,catering.cafe,catering.bar",
-  outdoors: "leisure.park,natural",
-  culture: "entertainment.museum,tourism.attraction,entertainment.culture",
-  active: "sport",
-  relax: "leisure.spa,catering.cafe",
-  social: "entertainment,catering.bar",
-  entertainment: "entertainment.cinema,entertainment.theme_park,entertainment.zoo,entertainment.aquarium",
-  nightlife: "entertainment.nightclub,entertainment.casino,catering.bar",
-  shopping: "commercial.shopping_mall,commercial",
-  adventure: "sport,natural",
-  gaming: "entertainment.bowling_alley,entertainment.miniature_golf,entertainment.escape_game",
-  learning: "education,entertainment.museum",
-  family: "leisure.playground,entertainment.zoo,entertainment.theme_park",
-} as const;
-
-export type ActivityCategory = keyof typeof ACTIVITY_CATEGORIES;
+export { ACTIVITY_CATEGORIES, OUTDOOR_ACTIVITY_CATEGORIES, type ActivityCategory } from "./category-taxonomy";
+import { ACTIVITY_CATEGORIES, type ActivityCategory } from "./category-taxonomy";
 
 export interface PlaceCandidate {
   name: string;

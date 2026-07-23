@@ -44,7 +44,7 @@ export function DiscoverClient({
   eventsAvailable: boolean;
   initialSavedActivities: Tables<"saved_activities">[];
 }) {
-  const [categories, setCategories] = React.useState<ActivityCategory[]>(["food_drink", "outdoors"]);
+  const [categories, setCategories] = React.useState<ActivityCategory[]>(["restaurants", "parks"]);
   const [includeEvents, setIncludeEvents] = React.useState(false);
   const [maxDistanceKm, setMaxDistanceKm] = React.useState("5");
   const [availableMinutes, setAvailableMinutes] = React.useState("120");

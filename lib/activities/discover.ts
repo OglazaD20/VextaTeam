@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "@/lib/ai/client";
 import { languageInstruction } from "@/lib/ai/language";
+import { shouldMoveOutdoorActivityIndoors } from "@/lib/weather/planner";
 import type { Locale } from "@/lib/i18n/locales";
 import { estimateTravelMinutes, haversineDistanceKm, type LatLng } from "./distance";
 import {
@@ -11,7 +12,8 @@ import {
   type PlaceCandidate,
 } from "./geoapify-client";
 import { getOpeningStatus } from "./opening-hours";
-import { getCurrentWeather, type WeatherSnapshot } from "./weather-client";
+import { isWeatherUnfavorableFor } from "./rank";
+import { getCurrentWeather, getHourlyForecast, type ForecastPoint, type WeatherSnapshot } from "./weather-client";
 
 export interface DiscoverFilters {
   categories: ActivityCategory[];
@@ -30,6 +32,8 @@ export interface DiscoverFilters {
 export interface ActivitySuggestion {
   title: string;
   pitch: string;
+  /** A short, factual explanation of why this was picked (distance, hours, weather fit, budget fit) — never a fabricated rating or popularity claim. */
+  whyRecommended: string;
   placeName: string;
   address: string | null;
   location: LatLng;
@@ -53,6 +57,7 @@ const suggestionsSchema = z.object({
       candidateIndex: z.number().int().min(0),
       title: z.string().max(80),
       pitch: z.string().max(180),
+      whyRecommended: z.string().max(200),
       estimatedDurationMinutes: z.number().int().min(10).max(480),
       costTier: z.enum(["free", "low", "medium", "high"]),
       indoorOutdoor: z.enum(["indoor", "outdoor"]),
@@ -65,23 +70,34 @@ function rankedCandidates(
   location: LatLng,
   maxDistanceKm: number,
   excludePlaceNames: string[],
+  requestedCategories: ActivityCategory[],
+  badOutdoorWeather: boolean,
 ) {
   const excluded = new Set(excludePlaceNames.map((n) => n.toLowerCase()));
   return candidates
     .filter((place) => !excluded.has(place.name.toLowerCase()))
-    .map((place) => ({
-      place,
-      distanceKm: haversineDistanceKm(location, place.location),
-      opening: getOpeningStatus(place.openingHours),
-    }))
+    .map((place) => {
+      const category = inferActivityCategory(place.category, requestedCategories);
+      return {
+        place,
+        category,
+        distanceKm: haversineDistanceKm(location, place.location),
+        opening: getOpeningStatus(place.openingHours),
+        weatherUnfavorable: isWeatherUnfavorableFor(category, badOutdoorWeather),
+      };
+    })
     .filter((c) => c.distanceKm <= maxDistanceKm)
     .sort((a, b) => {
-      // Open (or unknown-hours) places rank ahead of confirmed-closed ones —
-      // the AI still makes the final call, but this keeps the closed tail
-      // out of the top candidates it sees first.
+      // Open (or unknown-hours) places rank ahead of confirmed-closed ones,
+      // then weather-unfavorable outdoor picks rank behind weather-fine ones
+      // — the AI still makes the final call, but this keeps weak candidates
+      // out of the top of the list it sees first.
       const aClosed = a.opening.isOpenNow === false ? 1 : 0;
       const bClosed = b.opening.isOpenNow === false ? 1 : 0;
       if (aClosed !== bClosed) return aClosed - bClosed;
+      const aWeather = a.weatherUnfavorable ? 1 : 0;
+      const bWeather = b.weatherUnfavorable ? 1 : 0;
+      if (aWeather !== bWeather) return aWeather - bWeather;
       return a.distanceKm - b.distanceKm;
     })
     .slice(0, 40);
@@ -91,16 +107,21 @@ export async function discoverActivities(
   filters: DiscoverFilters,
   locale: Locale,
 ): Promise<ActivitySuggestion[]> {
-  const [places, weather] = await Promise.all([
+  const [places, weather, forecast] = await Promise.all([
     searchNearbyPlaces(filters.categories, filters.location, filters.maxDistanceKm),
     getCurrentWeather(filters.location),
+    getHourlyForecast(filters.location).catch((): ForecastPoint[] => []),
   ]);
+
+  const badOutdoorWeather = shouldMoveOutdoorActivityIndoors(weather, forecast);
 
   const ranked = rankedCandidates(
     places,
     filters.location,
     filters.maxDistanceKm,
     filters.excludePlaceNames ?? [],
+    filters.categories,
+    badOutdoorWeather,
   );
   if (ranked.length === 0) {
     return [];
@@ -114,17 +135,23 @@ export async function discoverActivities(
         role: "system",
         content:
           "You suggest specific, appealing activities for a daily planner app, using only the real " +
-          "place candidates provided — never invent a place, address, or distance. Pick as many good " +
+          "place candidates provided — never invent a place, address, or distance, and never invent a " +
+          "rating, review count, or popularity claim since none is given to you. Pick as many good " +
           "candidates as reasonably fit the user's filters and current weather — aim for 12 to 20 when " +
           "there are enough good options, don't pad the list with weak or redundant picks just to hit " +
           "that range (avoid outdoor picks in rain, prefer them in good weather). Each candidate has " +
-          "isOpenNow (true/false/null if hours are unknown) and closesAt (today's closing time, when " +
-          "open). Strongly prefer candidates that are open now — only include one that's currently closed " +
-          "if there's no good open alternative among the candidates that fits the filters, and if you do, " +
-          "say so plainly in the pitch (e.g. \"closed now, reopens tomorrow\") — never imply a closed place " +
-          "is open. Write a short, vivid one-sentence pitch per suggestion, in the " +
-          "style of \"Go for a sunset walk in Łazienki Park.\" Reference each pick by its candidateIndex " +
-          "in the provided list." +
+          "isOpenNow (true/false/null if hours are unknown), closesAt (today's closing time, when " +
+          "open), and weatherUnfavorable (true if it's a mostly-outdoor place and current weather is " +
+          "bad for outdoor activities). Strongly prefer candidates that are open now and not " +
+          "weatherUnfavorable — only include one that's closed or weather-unfavorable if there's no good " +
+          "alternative among the candidates that fits the filters, and if you do, say so plainly in the " +
+          "pitch (e.g. \"closed now, reopens tomorrow\") — never imply a closed place is open. Write a " +
+          "short, vivid one-sentence pitch per suggestion, in the style of \"Go for a sunset walk in " +
+          "Łazienki Park.\" Also write a separate whyRecommended: one short factual sentence citing only " +
+          "the real facts you were given for that candidate — distance/travel time, open-now/closing " +
+          "time, weather fit, or how well it matches the requested budget/duration/indoor-outdoor filters " +
+          "(e.g. \"5 min away, open until 11pm, and indoors while it's raining\") — never mention ratings, " +
+          "reviews, or popularity. Reference each pick by its candidateIndex in the provided list." +
           (filters.similarTo
             ? ` The user specifically liked "${filters.similarTo.placeName}" (${filters.similarTo.pitch}) — favor candidates with a similar vibe over maximizing variety.`
             : "") +
@@ -141,6 +168,7 @@ export async function discoverActivities(
             distanceKm: c.distanceKm,
             isOpenNow: c.opening.isOpenNow,
             closesAt: c.opening.closesAt,
+            weatherUnfavorable: c.weatherUnfavorable,
           })),
           weather,
           filters: {
@@ -168,6 +196,7 @@ export async function discoverActivities(
                   candidateIndex: { type: "integer", minimum: 0 },
                   title: { type: "string" },
                   pitch: { type: "string" },
+                  whyRecommended: { type: "string" },
                   estimatedDurationMinutes: { type: "integer", minimum: 10, maximum: 480 },
                   costTier: { type: "string", enum: ["free", "low", "medium", "high"] },
                   indoorOutdoor: { type: "string", enum: ["indoor", "outdoor"] },
@@ -176,6 +205,7 @@ export async function discoverActivities(
                   "candidateIndex",
                   "title",
                   "pitch",
+                  "whyRecommended",
                   "estimatedDurationMinutes",
                   "costTier",
                   "indoorOutdoor",
@@ -206,6 +236,7 @@ export async function discoverActivities(
       return {
         title: s.title,
         pitch: s.pitch,
+        whyRecommended: s.whyRecommended,
         placeName: candidate.place.name,
         address: candidate.place.address,
         location: candidate.place.location,
@@ -216,7 +247,7 @@ export async function discoverActivities(
         costTier: s.costTier,
         indoorOutdoor: s.indoorOutdoor,
         weather,
-        category: inferActivityCategory(candidate.place.category, filters.categories),
+        category: candidate.category,
         openingHours: candidate.place.openingHours,
         website: candidate.place.website,
         isOpenNow: candidate.opening.isOpenNow,

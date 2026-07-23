@@ -5,6 +5,7 @@ import {
   ClockIcon,
   ExternalLinkIcon,
   MapPinIcon,
+  MessageCircleQuestionIcon,
   NavigationIcon,
   PlusIcon,
   Share2Icon,
@@ -20,6 +21,7 @@ import { ACTIVITY_CATEGORY_ICON, ACTIVITY_CATEGORY_LABEL } from "@/lib/activitie
 import { shareOrCopy } from "@/lib/activities/share";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useUIStore } from "@/hooks/use-ui-store";
 import type { ActivitySuggestion } from "@/lib/activities/discover";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +41,7 @@ export function SuggestionCard({
 }) {
   const [isAdding, startAdding] = useTransition();
   const [isSaving, startSaving] = useTransition();
+  const askAssistant = useUIStore((state) => state.askAssistant);
 
   function handleAdd() {
     startAdding(async () => {
@@ -89,6 +92,13 @@ export function SuggestionCard({
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${suggestion.location.lat},${suggestion.location.lng}`;
 
+  function handleAskAi() {
+    askAssistant(
+      `Tell me more about ${suggestion.placeName}${suggestion.address ? ` (${suggestion.address})` : ""} — ` +
+        `it's a ${ACTIVITY_CATEGORY_LABEL[suggestion.category].toLowerCase()} place ${suggestion.distanceKm}km away. Is it a good fit for me right now?`,
+    );
+  }
+
   async function handleShare() {
     const result = await shareOrCopy({
       title: suggestion.title,
@@ -111,6 +121,12 @@ export function SuggestionCard({
           <p className="font-medium">{suggestion.title}</p>
         </div>
         <p className="text-sm text-muted-foreground">{suggestion.pitch}</p>
+        {suggestion.whyRecommended && (
+          <p className="mt-1 flex items-start gap-1 text-xs text-muted-foreground italic">
+            <SparklesIcon className="mt-0.5 size-3 shrink-0 text-primary" />
+            {suggestion.whyRecommended}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -168,6 +184,9 @@ export function SuggestionCard({
         </Button>
         <Button size="sm" variant="ghost" onClick={() => onGenerateSimilar(suggestion)}>
           <SparklesIcon className="size-3.5" /> More like this
+        </Button>
+        <Button size="sm" variant="ghost" onClick={handleAskAi}>
+          <MessageCircleQuestionIcon className="size-3.5" /> Ask AI
         </Button>
         <Button size="sm" variant="ghost" asChild>
           <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">

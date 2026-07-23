@@ -6,7 +6,7 @@ import { haversineDistanceKm, type LatLng } from "@/lib/activities/distance";
 import { geocodeLocation, searchNearbyPlaces, type PlaceCandidate } from "@/lib/activities/geoapify-client";
 import type { Locale } from "@/lib/i18n/locales";
 
-const ITINERARY_CATEGORIES = ["food_drink", "culture", "outdoors", "entertainment", "shopping", "family"] as const;
+const ITINERARY_CATEGORIES = ["restaurants", "museums", "parks", "cinema", "shopping", "family"] as const;
 const SEARCH_RADIUS_KM = 15;
 const MAX_CANDIDATES = 60;
 

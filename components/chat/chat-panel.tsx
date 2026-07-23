@@ -6,6 +6,7 @@ import { Loader2Icon, SendIcon, SparklesIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUIStore } from "@/hooks/use-ui-store";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
@@ -33,10 +34,19 @@ export function ChatPanel({ className }: { className?: string }) {
   const [isSending, setIsSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const draftChatMessage = useUIStore((state) => state.draftChatMessage);
+  const clearDraftChatMessage = useUIStore((state) => state.clearDraftChatMessage);
 
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  React.useEffect(() => {
+    if (!draftChatMessage) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- consuming a one-shot external "ask this" request from the UI store
+    setInput(draftChatMessage);
+    clearDraftChatMessage();
+  }, [draftChatMessage, clearDraftChatMessage]);
 
   async function sendMessage(text: string) {
     const trimmed = text.trim();
