@@ -2,7 +2,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   AppleIcon,
   BrainIcon,
-  CalendarClockIcon,
   CalendarDaysIcon,
   ChartNoAxesCombinedIcon,
   CompassIcon,
@@ -19,7 +18,6 @@ import {
   TargetIcon,
   TimerIcon,
   TrendingUpIcon,
-  TrophyIcon,
   WalletIcon,
 } from "lucide-react";
 
@@ -44,10 +42,8 @@ export const NAV_ITEMS = [
   { href: "/predict", labelKey: "predict", icon: TrendingUpIcon },
   { href: "/memory", labelKey: "memory", icon: BrainIcon },
   { href: "/analytics", labelKey: "analytics", icon: ChartNoAxesCombinedIcon },
-  { href: "/achievements", labelKey: "achievements", icon: TrophyIcon },
   { href: "/rewards", labelKey: "rewards", icon: PaletteIcon },
   { href: "/focus", labelKey: "focus", icon: TimerIcon },
-  { href: "/stats", labelKey: "stats", icon: CalendarClockIcon },
   { href: "/chat", labelKey: "assistant", icon: SparklesIcon },
   { href: "/settings", labelKey: "settings", icon: SettingsIcon },
 ] as const satisfies readonly { href: string; labelKey: NavLabelKey; icon: LucideIcon }[];

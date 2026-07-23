@@ -90,6 +90,6 @@ export async function endFocusSession(
   }
 
   revalidatePath("/focus");
-  revalidatePath("/stats");
+  revalidatePath("/analytics");
   return {};
 }
