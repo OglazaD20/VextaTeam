@@ -348,7 +348,7 @@ export interface Database {
           id: string;
           user_id: string;
           title: string | null;
-          kind: "assistant" | "nutrition";
+          kind: "assistant" | "nutrition" | "tutor";
           created_at: string;
           updated_at: string;
         };
@@ -567,6 +567,131 @@ export interface Database {
           user_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]>;
+        Relationships: [];
+      };
+      courses: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          subject: string;
+          description: string | null;
+          color: string | null;
+          icon: string | null;
+          exam_date: string | null;
+          daily_study_goal_minutes: number | null;
+          status: "active" | "completed" | "archived";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["courses"]["Row"]> & {
+          user_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["courses"]["Row"]>;
+        Relationships: [];
+      };
+      lessons: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          content: string | null;
+          is_bookmarked: boolean;
+          is_completed: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["lessons"]["Row"]> & {
+          course_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["lessons"]["Row"]>;
+        Relationships: [];
+      };
+      flashcards: {
+        Row: {
+          id: string;
+          course_id: string;
+          lesson_id: string | null;
+          front: string;
+          back: string;
+          ease_factor: number;
+          interval_days: number;
+          repetitions: number;
+          due_at: string;
+          last_reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["flashcards"]["Row"]> & {
+          course_id: string;
+          front: string;
+          back: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["flashcards"]["Row"]>;
+        Relationships: [];
+      };
+      quizzes: {
+        Row: {
+          id: string;
+          course_id: string;
+          lesson_id: string | null;
+          title: string;
+          questions: {
+            question: string;
+            options: string[];
+            correctIndex: number;
+            explanation: string;
+          }[];
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["quizzes"]["Row"]> & {
+          course_id: string;
+          title: string;
+          questions: {
+            question: string;
+            options: string[];
+            correctIndex: number;
+            explanation: string;
+          }[];
+        };
+        Update: Partial<Database["public"]["Tables"]["quizzes"]["Row"]>;
+        Relationships: [];
+      };
+      quiz_attempts: {
+        Row: {
+          id: string;
+          quiz_id: string;
+          user_id: string;
+          score_pct: number;
+          answers: number[];
+          completed_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["quiz_attempts"]["Row"]> & {
+          quiz_id: string;
+          user_id: string;
+          score_pct: number;
+          answers: number[];
+        };
+        Update: Partial<Database["public"]["Tables"]["quiz_attempts"]["Row"]>;
+        Relationships: [];
+      };
+      study_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string | null;
+          started_at: string;
+          duration_minutes: number;
+          logged_for_date: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["study_sessions"]["Row"]> & {
+          user_id: string;
+          duration_minutes: number;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["study_sessions"]["Row"]>;
         Relationships: [];
       };
       trips: {
