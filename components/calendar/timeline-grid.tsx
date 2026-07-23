@@ -265,6 +265,9 @@ function NowIndicator({ timeZone }: { timeZone: string }) {
   const [minutes, setMinutes] = React.useState<number | null>(null);
 
   React.useEffect(() => {
+    // Mount-detection to avoid an SSR/client Date.now() mismatch — a safe
+    // one-time flip plus a recurring subscription, not a synchronization loop.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMinutes(minutesFromMidnight(new Date(), timeZone));
     const interval = setInterval(() => setMinutes(minutesFromMidnight(new Date(), timeZone)), 60_000);
     return () => clearInterval(interval);

@@ -54,6 +54,9 @@ const fr: Messages = {
     focus: "Concentration",
     stats: "Statistiques",
     assistant: "Assistant",
+    predict: "Prédictions",
+    learn: "Espace d'apprentissage",
+    travel: "Voyages",
     settings: "Paramètres",
   },
   topbar: {

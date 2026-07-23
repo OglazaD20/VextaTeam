@@ -54,6 +54,9 @@ const de: Messages = {
     focus: "Fokus",
     stats: "Statistik",
     assistant: "Assistent",
+    predict: "Prognosen",
+    learn: "Lernzentrum",
+    travel: "Reisen",
     settings: "Einstellungen",
   },
   topbar: {

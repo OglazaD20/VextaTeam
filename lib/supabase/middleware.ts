@@ -15,6 +15,7 @@ const PROTECTED_PREFIXES = [
   "/stats",
   "/chat",
   "/settings",
+  "/predict",
 ];
 
 export async function updateSession(request: NextRequest) {

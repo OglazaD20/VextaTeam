@@ -52,6 +52,9 @@ const en = {
     focus: "Focus",
     stats: "Stats",
     assistant: "Assistant",
+    predict: "Predict",
+    learn: "Learning Hub",
+    travel: "Travel",
     settings: "Settings",
   },
   topbar: {

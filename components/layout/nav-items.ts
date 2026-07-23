@@ -16,6 +16,7 @@ import {
   SparklesIcon,
   TargetIcon,
   TimerIcon,
+  TrendingUpIcon,
   TrophyIcon,
   WalletIcon,
 } from "lucide-react";
@@ -36,6 +37,7 @@ export const NAV_ITEMS = [
   { href: "/health", labelKey: "health", icon: HeartPulseIcon },
   { href: "/finance", labelKey: "finance", icon: WalletIcon },
   { href: "/discover", labelKey: "discover", icon: CompassIcon },
+  { href: "/predict", labelKey: "predict", icon: TrendingUpIcon },
   { href: "/memory", labelKey: "memory", icon: BrainIcon },
   { href: "/analytics", labelKey: "analytics", icon: ChartNoAxesCombinedIcon },
   { href: "/achievements", labelKey: "achievements", icon: TrophyIcon },

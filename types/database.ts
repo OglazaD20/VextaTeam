@@ -873,6 +873,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["health_metrics"]["Row"]>;
         Relationships: [];
       };
+      ai_predictions: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: "goal" | "health" | "habit" | "finance" | "productivity";
+          prediction: string;
+          confidence_pct: number;
+          reasoning: string;
+          recommendation: string;
+          related_entity_type: string | null;
+          related_entity_id: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_predictions"]["Row"]> & {
+          user_id: string;
+          category: "goal" | "health" | "habit" | "finance" | "productivity";
+          prediction: string;
+          confidence_pct: number;
+          reasoning: string;
+          recommendation: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_predictions"]["Row"]>;
+        Relationships: [];
+      };
       coach_insights: {
         Row: {
           id: string;

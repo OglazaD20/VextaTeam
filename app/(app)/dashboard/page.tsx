@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CoachPanel } from "@/components/coach/coach-panel";
 import { HabitInsights } from "@/components/habits/habit-insights";
+import { PredictTeaser } from "@/components/predict/predict-teaser";
 import { HabitStreakList } from "@/components/stats/habit-streak-list";
 import { StatCard } from "@/components/stats/stat-card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export default async function DashboardPage() {
     { data: weekItems, error: weekError },
     { data: sessions, error: sessionsError },
     habitsWithStreaks,
+    { data: predictions },
   ] = await Promise.all([
     supabase
       .from("schedule_items")
@@ -64,6 +66,12 @@ export default async function DashboardPage() {
       .gte("started_at", weekRange.start.toISOString())
       .lte("started_at", weekRange.end.toISOString()),
     getHabitsWithStreaks(supabase, user.id, timeZone),
+    supabase
+      .from("ai_predictions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("confidence_pct", { ascending: false })
+      .limit(2),
   ]);
 
   if (todayError) throw new Error(`Failed to load today's schedule: ${todayError.message}`);
@@ -184,6 +192,18 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <HabitInsights />
+        </CardContent>
+      </Card>
+
+      <Card className="glass-surface">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">AI Predict</CardTitle>
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/predict">View all</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <PredictTeaser predictions={predictions ?? []} />
         </CardContent>
       </Card>
     </div>
