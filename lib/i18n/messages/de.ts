@@ -87,6 +87,13 @@ const de: Messages = {
     invalidEmail: "Gib eine gültige E-Mail-Adresse ein.",
     checkYourEmail: "Schau in dein Postfach — wir haben dir einen Anmeldelink geschickt.",
     closeTabHint: "Du kannst diesen Tab schließen, sobald du auf den Link geklickt hast.",
+    linkExpiredError: "Dieser Link ist abgelaufen oder wurde bereits verwendet — fordere unten einen neuen an.",
+    oauthError: "Die Anmeldung mit Google hat nicht funktioniert. Bitte versuche es erneut.",
+    genericAuthError: "Bei der Anmeldung ist etwas schiefgelaufen. Bitte versuche es erneut.",
+    rateLimitError: "Zu viele Versuche — bitte warte eine Minute und versuche es erneut.",
+    somethingWentWrong: "Beim Laden dieser Seite ist etwas schiefgelaufen.",
+    tryAgain: "Erneut versuchen",
+    backToSignIn: "Zurück zur Anmeldung",
   },
   settings: {
     title: "Einstellungen",

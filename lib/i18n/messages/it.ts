@@ -87,6 +87,13 @@ const it: Messages = {
     invalidEmail: "Inserisci un indirizzo email valido.",
     checkYourEmail: "Controlla la tua casella di posta per il link di accesso.",
     closeTabHint: "Puoi chiudere questa scheda dopo aver cliccato sul link.",
+    linkExpiredError: "Il link è scaduto o è già stato usato — richiedine uno nuovo qui sotto.",
+    oauthError: "L'accesso con Google non è andato a buon fine. Riprova.",
+    genericAuthError: "Si è verificato un problema durante l'accesso. Riprova.",
+    rateLimitError: "Troppi tentativi — attendi un minuto e riprova.",
+    somethingWentWrong: "Si è verificato un problema durante il caricamento di questa pagina.",
+    tryAgain: "Riprova",
+    backToSignIn: "Torna al login",
   },
   settings: {
     title: "Impostazioni",

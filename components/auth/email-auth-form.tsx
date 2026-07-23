@@ -11,9 +11,9 @@ import { Label } from "@/components/ui/label";
 
 const initialState: AuthActionState = { status: "idle" };
 
-export function EmailAuthForm({ ctaLabel }: { ctaLabel: string }) {
+export function EmailAuthForm({ ctaLabel, redirectTo }: { ctaLabel: string; redirectTo?: string }) {
   const [state, formAction, isPending] = useActionState(
-    signInWithEmail,
+    signInWithEmail.bind(null, redirectTo ?? null),
     initialState,
   );
   const { messages } = useTranslations();

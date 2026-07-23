@@ -87,6 +87,13 @@ const fr: Messages = {
     invalidEmail: "Saisissez une adresse e-mail valide.",
     checkYourEmail: "Consultez votre boîte de réception pour le lien de connexion.",
     closeTabHint: "Vous pouvez fermer cet onglet une fois le lien cliqué.",
+    linkExpiredError: "Ce lien a expiré ou a déjà été utilisé — demandez-en un nouveau ci-dessous.",
+    oauthError: "La connexion avec Google a échoué. Veuillez réessayer.",
+    genericAuthError: "Un problème est survenu lors de la connexion. Veuillez réessayer.",
+    rateLimitError: "Trop de tentatives — veuillez patienter une minute puis réessayer.",
+    somethingWentWrong: "Une erreur s'est produite lors du chargement de cette page.",
+    tryAgain: "Réessayer",
+    backToSignIn: "Retour à la connexion",
   },
   settings: {
     title: "Paramètres",

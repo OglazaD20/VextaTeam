@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 import { EmailAuthForm } from "@/components/auth/email-auth-form";
 import { GoogleAuthButton } from "@/components/auth/google-auth-button";
 import { Separator } from "@/components/ui/separator";
@@ -8,8 +9,13 @@ import { getDictionary } from "@/lib/i18n/get-locale";
 
 export const metadata: Metadata = { title: "Create your account — LifeFlow" };
 
-export default async function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; redirectTo?: string }>;
+}) {
   const { t } = await getDictionary();
+  const { error, redirectTo } = await searchParams;
 
   return (
     <div className="flex flex-col gap-6">
@@ -18,7 +24,9 @@ export default async function SignUpPage() {
         <p className="text-sm text-muted-foreground">{t.auth.signUpSubtitle}</p>
       </div>
 
-      <GoogleAuthButton />
+      <AuthErrorBanner error={error} />
+
+      <GoogleAuthButton redirectTo={redirectTo} />
 
       <div className="flex items-center gap-3">
         <Separator className="flex-1" />
@@ -26,7 +34,7 @@ export default async function SignUpPage() {
         <Separator className="flex-1" />
       </div>
 
-      <EmailAuthForm ctaLabel={t.auth.createAccount} />
+      <EmailAuthForm ctaLabel={t.auth.createAccount} redirectTo={redirectTo} />
 
       <p className="text-center text-sm text-muted-foreground">
         {t.auth.alreadyHaveAccount}{" "}

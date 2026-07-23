@@ -21,7 +21,22 @@ async function getOrigin() {
   return `${protocol}://${host}`;
 }
 
+function buildCallbackUrl(origin: string, redirectTo: string | null): string {
+  const url = new URL(`${origin}/auth/callback`);
+  if (redirectTo && redirectTo.startsWith("/")) {
+    url.searchParams.set("redirectTo", redirectTo);
+  }
+  return url.toString();
+}
+
+/** Supabase's auth error messages come back in English regardless of the app's language — map the common ones to a translated message rather than showing raw English in a localized UI. */
+function translateAuthError(message: string, t: Awaited<ReturnType<typeof getDictionary>>["t"]): string {
+  if (/rate limit/i.test(message)) return t.auth.rateLimitError;
+  return t.auth.genericAuthError;
+}
+
 export async function signInWithEmail(
+  redirectTo: string | null,
   _prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
@@ -38,12 +53,12 @@ export async function signInWithEmail(
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: buildCallbackUrl(origin, redirectTo),
     },
   });
 
   if (error) {
-    return { status: "error", message: error.message };
+    return { status: "error", message: translateAuthError(error.message, t) };
   }
 
   return {
@@ -52,14 +67,14 @@ export async function signInWithEmail(
   };
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(redirectTo: string | null) {
   const supabase = await createClient();
   const origin = await getOrigin();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: buildCallbackUrl(origin, redirectTo),
     },
   });
 

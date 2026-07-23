@@ -85,6 +85,13 @@ const en = {
     invalidEmail: "Enter a valid email address.",
     checkYourEmail: "Check your inbox for a sign-in link.",
     closeTabHint: "You can close this tab once you click the link.",
+    linkExpiredError: "That link expired or was already used — request a new one below.",
+    oauthError: "Google sign-in didn't go through. Please try again.",
+    genericAuthError: "Something went wrong signing you in. Please try again.",
+    rateLimitError: "Too many attempts — please wait a minute and try again.",
+    somethingWentWrong: "Something went wrong loading this page.",
+    tryAgain: "Try again",
+    backToSignIn: "Back to sign in",
   },
   settings: {
     title: "Settings",

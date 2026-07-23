@@ -87,6 +87,13 @@ const es: Messages = {
     invalidEmail: "Introduce una dirección de correo válida.",
     checkYourEmail: "Revisa tu bandeja de entrada para ver el enlace de acceso.",
     closeTabHint: "Puedes cerrar esta pestaña en cuanto hagas clic en el enlace.",
+    linkExpiredError: "Ese enlace caducó o ya se usó — solicita uno nuevo abajo.",
+    oauthError: "El inicio de sesión con Google no funcionó. Inténtalo de nuevo.",
+    genericAuthError: "Ocurrió un problema al iniciar sesión. Inténtalo de nuevo.",
+    rateLimitError: "Demasiados intentos — espera un minuto e inténtalo de nuevo.",
+    somethingWentWrong: "Ocurrió un problema al cargar esta página.",
+    tryAgain: "Intentar de nuevo",
+    backToSignIn: "Volver a iniciar sesión",
   },
   settings: {
     title: "Ajustes",

@@ -87,6 +87,13 @@ const pl: Messages = {
     invalidEmail: "Podaj prawidłowy adres e-mail.",
     checkYourEmail: "Sprawdź skrzynkę e-mail — wysłaliśmy link do logowania.",
     closeTabHint: "Możesz zamknąć tę kartę po kliknięciu linku.",
+    linkExpiredError: "Ten link wygasł lub został już użyty — poproś o nowy poniżej.",
+    oauthError: "Logowanie przez Google się nie powiodło. Spróbuj ponownie.",
+    genericAuthError: "Coś poszło nie tak podczas logowania. Spróbuj ponownie.",
+    rateLimitError: "Zbyt wiele prób — odczekaj chwilę i spróbuj ponownie.",
+    somethingWentWrong: "Coś poszło nie tak podczas ładowania tej strony.",
+    tryAgain: "Spróbuj ponownie",
+    backToSignIn: "Wróć do logowania",
   },
   settings: {
     title: "Ustawienia",
