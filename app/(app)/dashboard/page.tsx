@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CoachPanel } from "@/components/coach/coach-panel";
 import { HabitInsights } from "@/components/habits/habit-insights";
 import { PredictTeaser } from "@/components/predict/predict-teaser";
+import { WeatherImpactBanner } from "@/components/weather/weather-impact-banner";
 import { HabitStreakList } from "@/components/stats/habit-streak-list";
 import { StatCard } from "@/components/stats/stat-card";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,8 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-sm text-muted-foreground">{todayLabel}</p>
       </div>
+
+      <WeatherImpactBanner />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="glass-surface">

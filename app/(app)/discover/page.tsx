@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { getSavedActivities } from "@/app/(app)/discover/actions";
 import { DiscoverClient } from "@/components/discover/discover-client";
+import { WeatherImpactBanner } from "@/components/weather/weather-impact-banner";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -27,6 +28,7 @@ export default async function DiscoverPage() {
           Find something to do nearby, matched to your time, budget, and the weather.
         </p>
       </div>
+      <WeatherImpactBanner />
       <DiscoverClient
         eventsAvailable={Boolean(env.TICKETMASTER_API_KEY)}
         initialSavedActivities={savedActivities}

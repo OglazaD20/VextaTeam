@@ -8,6 +8,7 @@ import { DayViewHeader } from "@/components/calendar/day-view-header";
 import { QuickAccessRow } from "@/components/calendar/quick-access-row";
 import { TimelineGrid } from "@/components/calendar/timeline-grid";
 import { UnscheduledList } from "@/components/timeline/unscheduled-list";
+import { WeatherImpactBanner } from "@/components/weather/weather-impact-banner";
 import { getDayRangeUtc } from "@/lib/scheduling/day-range";
 import { dateKey } from "@/lib/scheduling/month-range";
 import { createClient } from "@/lib/supabase/server";
@@ -115,6 +116,7 @@ export default async function CalendarDayPage({
         timeZone={timeZone}
       />
       <QuickAccessRow />
+      {resolvedKey === dateKey(toZonedTime(new Date(), timeZone)) && <WeatherImpactBanner />}
       <TimelineGrid
         items={items ?? []}
         dateKey={resolvedKey}
