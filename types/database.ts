@@ -569,6 +569,79 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]>;
         Relationships: [];
       };
+      trips: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          destination: string;
+          destination_lat: number | null;
+          destination_lng: number | null;
+          start_date: string;
+          end_date: string;
+          budget: number | null;
+          currency: string;
+          transportation: "flight" | "train" | "car" | "bus" | "other" | null;
+          status: "planning" | "upcoming" | "active" | "completed" | "archived";
+          weather_summary: string | null;
+          packing_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["trips"]["Row"]> & {
+          user_id: string;
+          title: string;
+          destination: string;
+          start_date: string;
+          end_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trips"]["Row"]>;
+        Relationships: [];
+      };
+      trip_itinerary_items: {
+        Row: {
+          id: string;
+          trip_id: string;
+          day_number: number;
+          start_time: string | null;
+          title: string;
+          type: "attraction" | "restaurant" | "activity" | "transport" | "hotel" | "free_time";
+          place_name: string | null;
+          address: string | null;
+          lat: number | null;
+          lng: number | null;
+          estimated_cost: number | null;
+          estimated_duration_minutes: number | null;
+          notes: string | null;
+          sort_order: number;
+          added_to_calendar: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["trip_itinerary_items"]["Row"]> & {
+          trip_id: string;
+          day_number: number;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trip_itinerary_items"]["Row"]>;
+        Relationships: [];
+      };
+      trip_packing_items: {
+        Row: {
+          id: string;
+          trip_id: string;
+          item: string;
+          category: string;
+          is_packed: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["trip_packing_items"]["Row"]> & {
+          trip_id: string;
+          item: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trip_packing_items"]["Row"]>;
+        Relationships: [];
+      };
       activity_suggestions: {
         Row: {
           id: string;
