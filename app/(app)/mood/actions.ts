@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { runEventAutomations } from "@/lib/automations/engine";
 import { awardXpAndCheckAchievements } from "@/lib/gamification/engine";
 import { getTodayKey } from "@/lib/habits/today-key";
 import { recordMemory } from "@/lib/memory/upsert";
@@ -70,7 +71,10 @@ export async function logMood(input: LogMoodInput): Promise<ActionResult> {
 
   if (error) return { error: error.message };
 
-  if (inserted) await awardXpAndCheckAchievements(supabase, user.id, timeZone, "mood_logged", inserted.id, 5);
+  if (inserted) {
+    await awardXpAndCheckAchievements(supabase, user.id, timeZone, "mood_logged", inserted.id, 5);
+    await runEventAutomations(supabase, user.id, timeZone, "mood_logged", { mood: { mood: data.mood } });
+  }
 
   // Only check-ins with a note are recorded as memories — a bare mood tap
   // (mood: 3) isn't something anyone later asks "when did I feel a 3?"

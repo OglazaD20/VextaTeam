@@ -57,6 +57,7 @@ const fr: Messages = {
     predict: "Prédictions",
     learn: "Espace d'apprentissage",
     travel: "Voyages",
+    automations: "Automatisations",
     settings: "Paramètres",
   },
   topbar: {

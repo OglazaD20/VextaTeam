@@ -21,6 +21,7 @@ const serverEnvSchema = clientEnvSchema.extend({
   TRIPADVISOR_API_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  CRON_SECRET: z.string().min(1).optional(),
 });
 
 function parseEnv() {
@@ -42,6 +43,7 @@ function parseEnv() {
     TRIPADVISOR_API_KEY: process.env.TRIPADVISOR_API_KEY,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    CRON_SECRET: process.env.CRON_SECRET,
   });
 
   if (!parsed.success) {

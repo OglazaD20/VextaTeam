@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { generateGoalBreakdown } from "@/lib/ai/generate-goal-breakdown";
+import { runEventAutomations } from "@/lib/automations/engine";
 import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
@@ -227,6 +228,8 @@ export async function setGoalStatus(
 
   if (status === "completed") {
     await awardXp(supabase, user.id, "goal_completed", goalId, 100);
+    const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).single();
+    await runEventAutomations(supabase, user.id, profile?.timezone ?? "UTC", "goal_completed", {});
   }
 
   revalidateGoals();

@@ -57,6 +57,7 @@ const es: Messages = {
     predict: "Predicciones",
     learn: "Centro de aprendizaje",
     travel: "Viajes",
+    automations: "Automatizaciones",
     settings: "Ajustes",
   },
   topbar: {

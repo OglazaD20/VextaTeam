@@ -57,6 +57,7 @@ const de: Messages = {
     predict: "Prognosen",
     learn: "Lernzentrum",
     travel: "Reisen",
+    automations: "Automatisierungen",
     settings: "Einstellungen",
   },
   topbar: {

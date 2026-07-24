@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   "/predict",
   "/travel",
   "/learn",
+  "/automations",
 ];
 
 export async function updateSession(request: NextRequest) {

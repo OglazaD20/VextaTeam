@@ -18,6 +18,7 @@ import {
   TimerIcon,
   TrendingUpIcon,
   WalletIcon,
+  ZapIcon,
 } from "lucide-react";
 
 import type { Messages } from "@/lib/i18n/messages/en";
@@ -41,6 +42,7 @@ export const NAV_ITEMS = [
   { href: "/predict", labelKey: "predict", icon: TrendingUpIcon },
   { href: "/memory", labelKey: "memory", icon: BrainIcon },
   { href: "/analytics", labelKey: "analytics", icon: ChartNoAxesCombinedIcon },
+  { href: "/automations", labelKey: "automations", icon: ZapIcon },
   { href: "/focus", labelKey: "focus", icon: TimerIcon },
   { href: "/chat", labelKey: "assistant", icon: SparklesIcon },
   { href: "/settings", labelKey: "settings", icon: SettingsIcon },

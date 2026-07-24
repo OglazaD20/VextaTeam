@@ -57,6 +57,7 @@ const pl: Messages = {
     predict: "Prognozy",
     learn: "Centrum Nauki",
     travel: "Podróże",
+    automations: "Automatyzacje",
     settings: "Ustawienia",
   },
   topbar: {

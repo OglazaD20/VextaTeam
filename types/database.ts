@@ -108,6 +108,7 @@ export interface Database {
           avatar_url: string | null;
           timezone: string;
           onboarding_completed_at: string | null;
+          automations_last_suggested_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -117,6 +118,7 @@ export interface Database {
           avatar_url?: string | null;
           timezone?: string;
           onboarding_completed_at?: string | null;
+          automations_last_suggested_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -1231,6 +1233,72 @@ export interface Database {
           reward_id: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_reward_equips"]["Row"]>;
+        Relationships: [];
+      };
+      automations: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string | null;
+          enabled: boolean;
+          source: "manual" | "ai_generated";
+          trigger: Record<string, unknown>;
+          condition_groups: Record<string, unknown>;
+          actions: Record<string, unknown>;
+          last_run_at: string | null;
+          last_fired_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["automations"]["Row"]> & {
+          user_id: string;
+          name: string;
+          trigger: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["automations"]["Row"]>;
+        Relationships: [];
+      };
+      automation_runs: {
+        Row: {
+          id: string;
+          automation_id: string;
+          user_id: string;
+          ran_at: string;
+          status: "matched" | "skipped" | "error";
+          actions_taken: Record<string, unknown>;
+          error_message: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["automation_runs"]["Row"]> & {
+          automation_id: string;
+          user_id: string;
+          status: "matched" | "skipped" | "error";
+        };
+        Update: Partial<Database["public"]["Tables"]["automation_runs"]["Row"]>;
+        Relationships: [];
+      };
+      automation_suggestions: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string;
+          evidence: Record<string, unknown>;
+          proposed_trigger: Record<string, unknown>;
+          proposed_condition_groups: Record<string, unknown>;
+          proposed_actions: Record<string, unknown>;
+          status: "pending" | "accepted" | "dismissed";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["automation_suggestions"]["Row"]> & {
+          user_id: string;
+          title: string;
+          description: string;
+          evidence: Record<string, unknown>;
+          proposed_trigger: Record<string, unknown>;
+          proposed_actions: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["automation_suggestions"]["Row"]>;
         Relationships: [];
       };
     };

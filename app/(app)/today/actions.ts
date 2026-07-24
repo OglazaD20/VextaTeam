@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { runEventAutomations } from "@/lib/automations/engine";
 import { deleteIfGoogleConnected, pushIfGoogleConnected } from "@/lib/calendar/sync";
 import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
@@ -335,11 +336,13 @@ export async function setScheduleItemStatus(
 ): Promise<ActionResult> {
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("schedule_items")
     .update({ status })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("priority, category")
+    .single();
 
   if (error) {
     return { error: error.message };
@@ -347,6 +350,10 @@ export async function setScheduleItemStatus(
 
   if (status === "completed") {
     await awardXp(supabase, user.id, "task_completed", id, 10);
+    const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).single();
+    await runEventAutomations(supabase, user.id, profile?.timezone ?? "UTC", "task_completed", {
+      task: { priority: data?.priority ?? 0, category: data?.category ?? null },
+    });
   }
 
   revalidateSchedule();
@@ -361,17 +368,23 @@ export async function bulkSetScheduleItemStatus(
 
   const { supabase, user } = await requireUser();
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from("schedule_items")
     .update({ status })
     .in("id", ids)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id, priority, category");
 
   if (error) return { error: error.message };
 
   if (status === "completed") {
-    for (const id of ids) {
-      await awardXp(supabase, user.id, "task_completed", id, 10);
+    const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).single();
+    const timeZone = profile?.timezone ?? "UTC";
+    for (const row of updatedRows ?? []) {
+      await awardXp(supabase, user.id, "task_completed", row.id, 10);
+      await runEventAutomations(supabase, user.id, timeZone, "task_completed", {
+        task: { priority: row.priority, category: row.category },
+      });
     }
   }
 

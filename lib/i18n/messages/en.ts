@@ -55,6 +55,7 @@ const en = {
     predict: "Predict",
     learn: "Learning Hub",
     travel: "Travel",
+    automations: "Automations",
     settings: "Settings",
   },
   topbar: {

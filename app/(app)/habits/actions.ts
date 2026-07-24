@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { runEventAutomations } from "@/lib/automations/engine";
 import { awardXp } from "@/lib/gamification/award";
 import { createClient } from "@/lib/supabase/server";
 import { createHabitSchema, updateHabitSchema, type CreateHabitInput } from "./schema";
@@ -213,7 +214,18 @@ export async function toggleHabitLog(
       .single();
 
     if (error) return { error: error.message };
-    if (inserted) await awardXp(supabase, user.id, "habit_logged", inserted.id, 8);
+    if (inserted) {
+      await awardXp(supabase, user.id, "habit_logged", inserted.id, 8);
+      const [{ data: habit }, { data: profile }] = await Promise.all([
+        supabase.from("habits").select("name").eq("id", habitId).single(),
+        supabase.from("profiles").select("timezone").eq("id", user.id).single(),
+      ]);
+      if (habit) {
+        await runEventAutomations(supabase, user.id, profile?.timezone ?? "UTC", "habit_logged", {
+          habit: { name: habit.name },
+        });
+      }
+    }
   }
 
   revalidatePath("/habits");
