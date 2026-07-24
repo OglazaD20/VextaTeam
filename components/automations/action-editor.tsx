@@ -55,7 +55,7 @@ export function ActionEditor({
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" size="icon" variant="ghost" className="ml-auto size-7" onClick={onRemove}>
+        <Button type="button" size="icon" variant="ghost" className="ml-auto size-7" onClick={onRemove} aria-label="Remove action">
           <XIcon className="size-3.5" />
         </Button>
       </div>

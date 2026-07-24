@@ -102,7 +102,14 @@ export function AutomationCard({
         <Button size="sm" variant="outline" onClick={onShowHistory} className="gap-1">
           <HistoryIcon className="size-3.5" /> History
         </Button>
-        <Button size="sm" variant="ghost" onClick={handleDelete} disabled={isPending} className="ml-auto gap-1 text-destructive hover:text-destructive">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleDelete}
+          disabled={isPending}
+          className="ml-auto gap-1 text-destructive hover:text-destructive"
+          aria-label="Delete automation"
+        >
           <Trash2Icon className="size-3.5" />
         </Button>
       </div>

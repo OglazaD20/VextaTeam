@@ -151,7 +151,7 @@ export function ConditionEditor({
         </>
       )}
 
-      <Button type="button" size="icon" variant="ghost" className="ml-auto size-7" onClick={onRemove}>
+      <Button type="button" size="icon" variant="ghost" className="ml-auto size-7" onClick={onRemove} aria-label="Remove condition">
         <XIcon className="size-3.5" />
       </Button>
     </div>
