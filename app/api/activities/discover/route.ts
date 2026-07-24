@@ -4,7 +4,7 @@ import { z } from "zod";
 import { discoverActivities } from "@/lib/activities/discover";
 import { ACTIVITY_CATEGORIES } from "@/lib/activities/geoapify-client";
 import { createClient } from "@/lib/supabase/server";
-import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/get-locale";
 import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
 import { sendPushToUser } from "@/lib/notifications/push";
 
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const locale = await getLocale();
+    const { locale, t } = await getDictionary();
     const suggestions = await discoverActivities(parsed.data, locale);
 
     await supabase.from("activity_suggestions").insert({
@@ -84,8 +84,11 @@ export async function POST(request: Request) {
         isNotificationDueForFrequency("discover_recommendation", notifSettings?.reminder_frequency)
       ) {
         await sendPushToUser(supabase, user.id, profile?.timezone ?? "UTC", {
-          title: "New Discover recommendations",
-          body: `Found ${suggestions.length} suggestion${suggestions.length === 1 ? "" : "s"} nearby.`,
+          title: t.notifications.newDiscoverRecommendationsTitle,
+          body: t.notifications.newDiscoverRecommendationsBody.replace(
+            "{count}",
+            String(suggestions.length),
+          ),
         });
       }
     }

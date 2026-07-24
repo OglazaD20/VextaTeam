@@ -6,12 +6,14 @@ import { CheckCircle2Icon, CircleIcon, Loader2Icon, XCircleIcon } from "lucide-r
 import { toast } from "sonner";
 
 import { submitQuizAttempt } from "@/app/(app)/learn/actions";
+import { useTranslations } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
 export function QuizTaker({ courseId, quiz, onDone }: { courseId: string; quiz: Tables<"quizzes">; onDone?: () => void }) {
   const router = useRouter();
+  const { messages } = useTranslations();
   const [answers, setAnswers] = React.useState<(number | null)[]>(quiz.questions.map(() => null));
   const [submitted, setSubmitted] = React.useState(false);
   const [scorePct, setScorePct] = React.useState<number | null>(null);
@@ -29,7 +31,7 @@ export function QuizTaker({ courseId, quiz, onDone }: { courseId: string; quiz: 
     startTransition(async () => {
       const result = await submitQuizAttempt({ quizId: quiz.id, answers: answers as number[] }, courseId);
       if (result.error || result.data === undefined) {
-        toast.error("Couldn't submit that quiz", { description: result.error });
+        toast.error(messages.learn.quizSubmitError, { description: result.error });
         return;
       }
       setScorePct(result.data.scorePct);
@@ -44,7 +46,9 @@ export function QuizTaker({ courseId, quiz, onDone }: { courseId: string; quiz: 
         <div className="rounded-xl border border-border bg-muted/50 px-4 py-3 text-center">
           <p className="text-lg font-semibold">{scorePct}%</p>
           <p className="text-xs text-muted-foreground">
-            {answers.filter((a, i) => a === quiz.questions[i].correctIndex).length}/{quiz.questions.length} correct
+            {messages.learn.correctCount
+              .replace("{correct}", String(answers.filter((a, i) => a === quiz.questions[i].correctIndex).length))
+              .replace("{total}", String(quiz.questions.length))}
           </p>
         </div>
       )}
@@ -97,12 +101,12 @@ export function QuizTaker({ courseId, quiz, onDone }: { courseId: string; quiz: 
       {!submitted ? (
         <Button onClick={handleSubmit} disabled={!allAnswered || isPending}>
           {isPending && <Loader2Icon className="animate-spin" />}
-          Submit quiz
+          {messages.learn.submitQuiz}
         </Button>
       ) : (
         onDone && (
           <Button variant="secondary" onClick={onDone}>
-            Close
+            {messages.common.close}
           </Button>
         )
       )}

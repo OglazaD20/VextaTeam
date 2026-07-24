@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { GraduationCapIcon, Loader2Icon, SendIcon } from "lucide-react";
 
+import { useTranslations } from "@/components/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ interface TutorChatApiResponse {
 
 export function TutorChatPanel({ courseId, suggestions }: { courseId?: string; suggestions?: string[] }) {
   const router = useRouter();
+  const { messages: t } = useTranslations();
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [conversationId, setConversationId] = React.useState<string | null>(null);
   const [input, setInput] = React.useState("");
@@ -50,7 +52,7 @@ export function TutorChatPanel({ courseId, suggestions }: { courseId?: string; s
       const result: TutorChatApiResponse = await response.json();
 
       if (!response.ok || result.error || !result.message) {
-        setError(result.error ?? "Something went wrong");
+        setError(result.error ?? t.learn.aiTutorGenericError);
         return;
       }
 
@@ -58,7 +60,7 @@ export function TutorChatPanel({ courseId, suggestions }: { courseId?: string; s
       setMessages((prev) => [...prev, { role: "assistant", content: result.message! }]);
       router.refresh();
     } catch {
-      setError("Couldn't reach the AI Tutor");
+      setError(t.learn.aiTutorUnreachable);
     } finally {
       setIsSending(false);
     }
@@ -76,15 +78,15 @@ export function TutorChatPanel({ courseId, suggestions }: { courseId?: string; s
           <GraduationCapIcon className="size-4" />
         </div>
         <div>
-          <p className="text-sm font-semibold">AI Tutor</p>
-          <p className="text-xs text-muted-foreground">Ask questions, or generate flashcards/quizzes/study plans</p>
+          <p className="text-sm font-semibold">{t.learn.aiTutor}</p>
+          <p className="text-xs text-muted-foreground">{t.learn.aiTutorSubtitle}</p>
         </div>
       </div>
 
       <div ref={scrollRef} className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="max-w-[85%] rounded-2xl rounded-bl-sm bg-muted px-3.5 py-2.5 text-sm">
-            Ask me to explain something, quiz you, make flashcards, or build a study plan.
+            {t.learn.aiTutorGreeting}
           </div>
         )}
 
@@ -105,7 +107,7 @@ export function TutorChatPanel({ courseId, suggestions }: { courseId?: string; s
         {isSending && (
           <div className="flex items-center gap-2 self-start rounded-2xl rounded-bl-sm bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
             <Loader2Icon className="size-3.5 animate-spin" />
-            Thinking…
+            {t.learn.aiTutorThinking}
           </div>
         )}
 
@@ -132,7 +134,7 @@ export function TutorChatPanel({ courseId, suggestions }: { courseId?: string; s
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask the AI Tutor…"
+          placeholder={t.learn.aiTutorPlaceholder}
           disabled={isSending}
           className="flex-1"
         />

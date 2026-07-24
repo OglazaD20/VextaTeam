@@ -12,6 +12,7 @@ import {
   projectMonthEndSpend,
 } from "@/lib/finance/calculations";
 import { awardXp } from "@/lib/gamification/award";
+import { getLocale } from "@/lib/i18n/get-locale";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -350,7 +351,8 @@ export async function scanReceipt(
 
   let extracted: ExtractedReceipt;
   try {
-    extracted = await extractReceiptData(dataUrl);
+    const locale = await getLocale();
+    extracted = await extractReceiptData(dataUrl, locale);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Couldn't read that receipt" };
   }

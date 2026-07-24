@@ -4,7 +4,7 @@ import { z } from "zod";
 import { generateCoaching } from "@/lib/ai/generate-coaching";
 import { getCurrentWeather, getHourlyForecast } from "@/lib/activities/weather-client";
 import { computeWeatherSuggestions } from "@/lib/weather/planner";
-import { getLocale } from "@/lib/i18n/get-locale";
+import { getDictionary } from "@/lib/i18n/get-locale";
 import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
 import { sendPushToUser } from "@/lib/notifications/push";
 import {
@@ -248,7 +248,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const locale = await getLocale();
+    const { locale, t } = await getDictionary();
     const result = await generateCoaching({ period, ...signals }, locale);
 
     await supabase.from("coach_insights").insert({
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
       isNotificationDueForFrequency("coach_suggestion", notifSettings?.reminder_frequency)
     ) {
       await sendPushToUser(supabase, user.id, timeZone, {
-        title: "New AI Coach insight",
+        title: t.notifications.newCoachInsightTitle,
         body: result.headline,
       });
     }

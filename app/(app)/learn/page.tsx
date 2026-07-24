@@ -7,11 +7,13 @@ import { CreateCourseDialog } from "@/components/learn/create-course-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { computeStreak } from "@/lib/habits/streak";
+import { getDictionary } from "@/lib/i18n/get-locale";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Learn — LifeFlow" };
 
 export default async function LearnPage() {
+  const { t } = await getDictionary();
   const supabase = await createClient();
   const {
     data: { user },
@@ -54,8 +56,8 @@ export default async function LearnPage() {
     <div className="mx-auto flex h-full max-w-3xl flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Learn</h1>
-          <p className="text-sm text-muted-foreground">Courses, flashcards, quizzes, and your AI Tutor.</p>
+          <h1 className="text-xl font-semibold tracking-tight">{t.learn.title}</h1>
+          <p className="text-sm text-muted-foreground">{t.learn.subtitle}</p>
         </div>
         <CreateCourseDialog />
       </div>
@@ -63,7 +65,7 @@ export default async function LearnPage() {
       {streak > 0 && (
         <div className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-sm">
           <FlameIcon className="size-4 text-orange-500" />
-          <span className="font-medium">{streak}-day study streak</span>
+          <span className="font-medium">{t.learn.studyStreak.replace("{days}", String(streak))}</span>
         </div>
       )}
 
@@ -87,10 +89,14 @@ export default async function LearnPage() {
                       {examDays !== null && (
                         <Badge variant="outline" className="flex items-center gap-1">
                           <CalendarClockIcon className="size-3" />
-                          {examDays >= 0 ? `Exam in ${examDays}d` : "Exam passed"}
+                          {examDays >= 0
+                            ? t.learn.examInDays.replace("{days}", String(examDays))
+                            : t.learn.examPassed}
                         </Badge>
                       )}
-                      {dueCount > 0 && <Badge variant="secondary">{dueCount} due</Badge>}
+                      {dueCount > 0 && (
+                        <Badge variant="secondary">{t.learn.dueCount.replace("{count}", String(dueCount))}</Badge>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -102,17 +108,15 @@ export default async function LearnPage() {
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center">
           <GraduationCapIcon className="size-8 text-muted-foreground" />
           <div>
-            <p className="font-medium">No courses yet</p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Create a course, then ask your AI Tutor to explain topics, build flashcards, or quiz you.
-            </p>
+            <p className="font-medium">{t.learn.noCoursesTitle}</p>
+            <p className="max-w-sm text-sm text-muted-foreground">{t.learn.noCoursesBody}</p>
           </div>
         </div>
       )}
 
       {otherCourses.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-medium text-muted-foreground">Completed & archived</h2>
+          <h2 className="text-sm font-medium text-muted-foreground">{t.learn.completedArchived}</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {otherCourses.map((course) => (
               <Link key={course.id} href={`/learn/${course.id}`}>

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { EXPENSE_CATEGORIES } from "@/lib/finance/categories";
 import { AI_MODEL_CHAT, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const receiptSchema = z.object({
   merchantName: z.string().max(140).nullable(),
@@ -19,7 +21,7 @@ export type ExtractedReceipt = z.infer<typeof receiptSchema>;
  * being saved as a transaction; never auto-commits, since misread amounts
  * on financial data are a real-money mistake, unlike a misread food label.
  */
-export async function extractReceiptData(imageDataUrl: string): Promise<ExtractedReceipt> {
+export async function extractReceiptData(imageDataUrl: string, locale: Locale): Promise<ExtractedReceipt> {
   const openai = getOpenAIClient();
 
   const response = await openai.chat.completions.create({
@@ -31,7 +33,8 @@ export async function extractReceiptData(imageDataUrl: string): Promise<Extracte
           "Read this receipt photo and extract the merchant name, total amount paid (the final " +
           "total, not a subtotal), the transaction date if visible, a best-guess spending category " +
           "from the given list, and a one-sentence summary of what was purchased. Return null for " +
-          "any field you can't confidently read — never guess a number.",
+          "any field you can't confidently read — never guess a number. " +
+          languageInstruction(locale),
       },
       {
         role: "user",

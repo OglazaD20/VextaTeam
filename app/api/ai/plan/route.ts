@@ -27,6 +27,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  const locale = await getLocale();
+
   const body = await request.json().catch(() => ({}) as { date?: string });
   const targetDate = typeof body?.date === "string" ? body.date : null;
 
@@ -90,6 +92,7 @@ export async function POST(request: Request) {
     try {
       estimates = await estimateDurations(
         needsEstimate.map((row) => ({ id: row.id, title: row.title, type: row.type })),
+        locale,
       );
     } catch (error) {
       return NextResponse.json(
@@ -176,7 +179,6 @@ export async function POST(request: Request) {
   let daySummary = "";
   if (notableFacts.length > 0 || bumpedTitles.length > 0 || lastNightSleep) {
     try {
-      const locale = await getLocale();
       const reasoning = await generatePlanReasoning(
         {
           notableFacts,

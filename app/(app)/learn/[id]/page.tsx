@@ -10,11 +10,13 @@ import { LogStudySessionButton } from "@/components/learn/log-study-session-butt
 import { QuizList } from "@/components/learn/quiz-list";
 import { TutorChatPanel } from "@/components/learn/tutor-chat-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDictionary } from "@/lib/i18n/get-locale";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Course — LifeFlow" };
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { t } = await getDictionary();
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -54,7 +56,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       {examDays !== null && (
         <div className="flex w-fit items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-sm">
           <CalendarClockIcon className="size-4 text-primary" />
-          <span className="font-medium">{examDays >= 0 ? `Exam in ${examDays} day${examDays === 1 ? "" : "s"}` : "Exam date passed"}</span>
+          <span className="font-medium">
+            {examDays >= 0
+              ? t.learn.examInDaysLong.replace("{days}", String(examDays))
+              : t.learn.examDatePassed}
+          </span>
         </div>
       )}
 
@@ -63,7 +69,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           <Card className="glass-surface">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <NotebookTextIcon className="size-4" /> Lessons
+                <NotebookTextIcon className="size-4" /> {t.learn.lessons}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -74,7 +80,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           <Card className="glass-surface">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <LayersIcon className="size-4" /> Flashcards
+                <LayersIcon className="size-4" /> {t.learn.flashcards}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -85,7 +91,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           <Card className="glass-surface">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <HelpCircleIcon className="size-4" /> Quizzes
+                <HelpCircleIcon className="size-4" /> {t.learn.quizzes}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -98,10 +104,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
           <TutorChatPanel
             courseId={course.id}
             suggestions={[
-              `Explain the basics of ${course.subject}`,
-              `Make 10 flashcards for ${course.title}`,
-              `Quiz me on ${course.title}`,
-              `Build me a study plan for ${course.title}`,
+              t.learn.explainBasics.replace("{subject}", course.subject),
+              t.learn.makeFlashcards.replace("{title}", course.title),
+              t.learn.quizMe.replace("{title}", course.title),
+              t.learn.buildStudyPlan.replace("{title}", course.title),
             ]}
           />
         </div>

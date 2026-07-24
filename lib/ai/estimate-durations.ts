@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { AI_MODEL_FAST, getOpenAIClient } from "./client";
+import { languageInstruction } from "./language";
+import type { Locale } from "@/lib/i18n/locales";
 
 const estimateSchema = z.object({
   estimates: z.array(
@@ -22,6 +24,7 @@ export interface DurationEstimateRequest {
 
 export async function estimateDurations(
   items: DurationEstimateRequest[],
+  locale: Locale,
 ): Promise<DurationEstimate[]> {
   if (items.length === 0) return [];
 
@@ -33,7 +36,8 @@ export async function estimateDurations(
       {
         role: "system",
         content:
-          "You estimate how long tasks realistically take, in minutes, for a daily planner app. Be realistic rather than optimistic — account for typical friction and context-switching. Keep each reasoning to a short clause, under 12 words, written for the task's owner (e.g. \"emails like this usually run long\").",
+          "You estimate how long tasks realistically take, in minutes, for a daily planner app. Be realistic rather than optimistic — account for typical friction and context-switching. Keep each reasoning to a short clause, under 12 words, written for the task's owner (e.g. \"emails like this usually run long\"). " +
+          languageInstruction(locale),
       },
       { role: "user", content: JSON.stringify({ items }) },
     ],
