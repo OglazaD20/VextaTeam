@@ -6,10 +6,11 @@ import { env } from "@/lib/env";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /**
- * Polled by Vercel Cron (see vercel.json) roughly every 15 minutes. Fires
- * any due schedule-triggered automations across all users, and — once a
- * week per user (tracked via automations_last_suggested_at on profiles) —
- * generates fresh proactive automation suggestions from real behavior.
+ * Called once a day by Vercel Cron (see vercel.json — Hobby-plan projects
+ * can't schedule cron more often than daily). Fires any due
+ * schedule-triggered automations across all users, and — once a week per
+ * user (tracked via automations_last_suggested_at on profiles) — generates
+ * fresh proactive automation suggestions from real behavior.
  */
 export async function GET(request: Request) {
   if (env.CRON_SECRET) {

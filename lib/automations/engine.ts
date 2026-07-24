@@ -181,12 +181,15 @@ export async function runEventAutomations(
 }
 
 /**
- * Polled by the Vercel Cron endpoint every ~15 minutes. Iterates every
- * enabled schedule-triggered automation across all users (via the
- * service-role client — there's no single user session in a cron context),
- * fires the ones whose local time just passed their trigger time today,
- * and stamps `last_fired_date` so the same automation never double-fires
- * within one poll-interval window or later the same day.
+ * Called once a day by the Vercel Cron endpoint (Hobby-plan projects can't
+ * schedule cron more often than daily). Iterates every enabled
+ * schedule-triggered automation across all users (via the service-role
+ * client — there's no single user session in a cron context), fires the
+ * ones whose configured local trigger time has already passed today, and
+ * stamps `last_fired_date` so the same automation never fires twice in one
+ * day. Because there's only one tick per day, a trigger time can land
+ * anywhere from right on time to nearly 24h late depending on when in the
+ * day it falls relative to the cron's fixed run time — see vercel.json.
  */
 export async function runDueScheduleAutomations(
   supabase: ServiceClient,
@@ -220,9 +223,11 @@ export async function runDueScheduleAutomations(
     const triggerMinutes = triggerHour * 60 + triggerMinute;
     const { dayOfWeek, minutes: nowMinutes } = localDayOfWeekAndMinutes(now, timeZone);
 
-    // Fire once we're at/past the trigger time, within a 20-minute grace
-    // window (covers a missed or delayed poll) — never fire "early".
-    if (nowMinutes < triggerMinutes || nowMinutes - triggerMinutes > 20) continue;
+    // The cron only ticks once a day (Vercel Hobby plan doesn't allow
+    // finer-grained schedules), so there's no tight polling window to check
+    // against — fire the first time this daily tick lands at/after the
+    // automation's configured local time, and never before it.
+    if (nowMinutes < triggerMinutes) continue;
     if (trigger.daysOfWeek && trigger.daysOfWeek.length > 0 && !trigger.daysOfWeek.includes(dayOfWeek)) continue;
 
     const baseCtx: AutomationContext = { dayOfWeek, timeOfDayMinutes: nowMinutes };
