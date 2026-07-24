@@ -1,0 +1,1346 @@
+/**
+ * Hand-authored Supabase database types matching docs/ARCHITECTURE.md §4.
+ * Once a Supabase project is linked, replace this file with generated types:
+ *   supabase gen types typescript --project-id <ref> > types/database.ts
+ */
+
+export type ScheduleItemType =
+  | "meeting"
+  | "task"
+  | "deadline"
+  | "habit"
+  | "appointment"
+  | "break"
+  | "activity";
+export type ScheduleItemStatus =
+  | "planned"
+  | "in_progress"
+  | "completed"
+  | "skipped"
+  | "cancelled";
+export type ScheduleItemSource = "lifeflow" | "google" | "outlook" | "apple" | "ai_suggested";
+export type HabitCategory =
+  | "sleep"
+  | "fitness"
+  | "hydration"
+  | "reading"
+  | "mindfulness"
+  | "movement"
+  | "custom";
+export type HabitCadence = "daily" | "weekly" | "custom";
+export type CalendarProvider = "google" | "outlook" | "apple";
+export type CalendarSyncStatus = "active" | "paused" | "error" | "revoked";
+export type NotificationType =
+  | "leave_now"
+  | "break_reminder"
+  | "weather"
+  | "free_time"
+  | "reschedule"
+  | "habit_skip"
+  | "weekly_report"
+  | "task_reminder"
+  | "water_reminder"
+  | "meal_reminder"
+  | "bedtime_reminder"
+  | "goal_reminder"
+  | "finance_reminder"
+  | "calendar_reminder"
+  | "morning_summary"
+  | "workout_reminder"
+  | "coach_suggestion"
+  | "discover_recommendation";
+export type ChatRole = "user" | "assistant" | "tool";
+export type ReminderFrequency = "normal" | "reduced" | "minimal";
+export type RescheduleReason = "delay" | "manual" | "conflict" | "ai_optimization";
+export type RescheduleTrigger = "user" | "ai" | "system";
+export type Theme = "light" | "dark" | "system";
+export type Chronotype = "early_bird" | "night_owl" | "flexible";
+export type FoodSource = "usda" | "custom" | "recipe";
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "drink";
+export type GoalCategory =
+  | "fitness"
+  | "business"
+  | "learning"
+  | "finance"
+  | "reading"
+  | "career"
+  | "travel"
+  | "personal"
+  | "health"
+  | "custom";
+export type TransactionType = "income" | "expense";
+export type BillingCycle = "weekly" | "monthly" | "yearly";
+export type AssetType = "investment" | "savings" | "property" | "other";
+export type MemorySourceType =
+  | "task"
+  | "calendar_event"
+  | "habit"
+  | "goal"
+  | "note"
+  | "discover_activity"
+  | "nutrition"
+  | "health"
+  | "mood"
+  | "finance"
+  | "ai_conversation"
+  | "favorite_place"
+  | "workout"
+  | "reading"
+  | "file"
+  | "chat_summary"
+  | "preference_note";
+
+export interface RecurrenceRule {
+  freq: "daily" | "weekly" | "monthly";
+  interval: number;
+  byWeekday?: number[];
+  until?: string | null;
+  count?: number | null;
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          avatar_url: string | null;
+          timezone: string;
+          onboarding_completed_at: string | null;
+          automations_last_suggested_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          timezone?: string;
+          onboarding_completed_at?: string | null;
+          automations_last_suggested_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      user_settings: {
+        Row: {
+          user_id: string;
+          wake_time: string;
+          sleep_time: string;
+          working_hours: Record<string, [string, string]>;
+          chronotype: Chronotype;
+          default_task_buffer_minutes: number;
+          focus_block_minutes: number;
+          break_minutes: number;
+          theme: Theme;
+          notification_prefs: Record<string, boolean>;
+          default_lat: number | null;
+          default_lng: number | null;
+          visible_health_cards: string[];
+          quiet_hours_start: string | null;
+          quiet_hours_end: string | null;
+          notification_sound: boolean;
+          vibration: boolean;
+          reminder_frequency: ReminderFrequency;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_settings"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_settings"]["Row"]>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]> & {
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["push_subscriptions"]["Row"]>;
+        Relationships: [];
+      };
+      schedule_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: ScheduleItemType;
+          title: string;
+          description: string | null;
+          status: ScheduleItemStatus;
+          priority: number;
+          is_fixed: boolean;
+          estimated_duration_minutes: number | null;
+          actual_duration_minutes: number | null;
+          scheduled_start: string | null;
+          scheduled_end: string | null;
+          due_at: string | null;
+          location: string | null;
+          source: ScheduleItemSource;
+          external_event_id: string | null;
+          external_updated_at: string | null;
+          habit_id: string | null;
+          parent_item_id: string | null;
+          ai_reasoning: string | null;
+          category: string | null;
+          notes: string | null;
+          recurrence_rule: RecurrenceRule | null;
+          archived_at: string | null;
+          sort_order: number;
+          goal_id: string | null;
+          deleted_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["schedule_items"]["Row"]> & {
+          user_id: string;
+          type: ScheduleItemType;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["schedule_items"]["Row"]>;
+        Relationships: [];
+      };
+      reschedule_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          schedule_item_id: string | null;
+          reason: RescheduleReason;
+          previous_start: string | null;
+          previous_end: string | null;
+          new_start: string | null;
+          new_end: string | null;
+          triggered_by: RescheduleTrigger;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["reschedule_events"]["Row"]> & {
+          user_id: string;
+          reason: RescheduleReason;
+          triggered_by: RescheduleTrigger;
+        };
+        Update: Partial<Database["public"]["Tables"]["reschedule_events"]["Row"]>;
+        Relationships: [];
+      };
+      habits: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          icon: string | null;
+          category: HabitCategory | null;
+          cadence: HabitCadence;
+          target_value: number | null;
+          target_unit: string | null;
+          preferred_time: string | null;
+          reminder_enabled: boolean;
+          paused_at: string | null;
+          sort_order: number;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["habits"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["habits"]["Row"]>;
+        Relationships: [];
+      };
+      habit_logs: {
+        Row: {
+          id: string;
+          habit_id: string;
+          user_id: string;
+          logged_for_date: string;
+          completed: boolean;
+          value: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["habit_logs"]["Row"]> & {
+          habit_id: string;
+          user_id: string;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["habit_logs"]["Row"]>;
+        Relationships: [];
+      };
+      focus_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          schedule_item_id: string | null;
+          planned_duration_minutes: number;
+          actual_duration_minutes: number | null;
+          pomodoro_cycles: number;
+          started_at: string;
+          ended_at: string | null;
+          interrupted: boolean;
+          mood_after: number | null;
+          energy_after: number | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["focus_sessions"]["Row"]> & {
+          user_id: string;
+          planned_duration_minutes: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["focus_sessions"]["Row"]>;
+        Relationships: [];
+      };
+      mood_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_at: string;
+          mood: number;
+          energy: number | null;
+          note: string | null;
+          stress: number | null;
+          motivation: number | null;
+          productivity: number | null;
+          happiness: number | null;
+          sleep_quality: number | null;
+          anxiety: number | null;
+          confidence: number | null;
+          focus: number | null;
+          logged_for_date: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["mood_logs"]["Row"]> & {
+          user_id: string;
+          mood: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["mood_logs"]["Row"]>;
+        Relationships: [];
+      };
+      calendar_connections: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: CalendarProvider;
+          account_email: string | null;
+          access_token_encrypted: string | null;
+          refresh_token_encrypted: string | null;
+          token_expires_at: string | null;
+          scopes: string[] | null;
+          sync_status: CalendarSyncStatus;
+          last_synced_at: string | null;
+          sync_cursor: string | null;
+          channel_id: string | null;
+          channel_resource_id: string | null;
+          channel_expiration: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["calendar_connections"]["Row"]> & {
+          user_id: string;
+          provider: CalendarProvider;
+        };
+        Update: Partial<Database["public"]["Tables"]["calendar_connections"]["Row"]>;
+        Relationships: [];
+      };
+      ai_conversations: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string | null;
+          kind: "assistant" | "nutrition" | "tutor";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_conversations"]["Row"]>;
+        Relationships: [];
+      };
+      ai_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          role: ChatRole;
+          content: string;
+          tool_calls: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]> & {
+          conversation_id: string;
+          role: ChatRole;
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_messages"]["Row"]>;
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: NotificationType;
+          title: string;
+          body: string;
+          related_item_id: string | null;
+          delivered_at: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["notifications"]["Row"]> & {
+          user_id: string;
+          type: NotificationType;
+          title: string;
+          body: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+        Relationships: [];
+      };
+      weekly_reports: {
+        Row: {
+          id: string;
+          user_id: string;
+          week_start: string;
+          productive_minutes: number | null;
+          tasks_completed: number | null;
+          tasks_planned: number | null;
+          focus_score: number | null;
+          habit_streak_summary: Record<string, unknown> | null;
+          mood_trend: Record<string, unknown> | null;
+          ai_recommendations: string[] | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["weekly_reports"]["Row"]> & {
+          user_id: string;
+          week_start: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["weekly_reports"]["Row"]>;
+        Relationships: [];
+      };
+      tags: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          color: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["tags"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["tags"]["Row"]>;
+        Relationships: [];
+      };
+      schedule_item_tags: {
+        Row: {
+          schedule_item_id: string;
+          tag_id: string;
+        };
+        Insert: Database["public"]["Tables"]["schedule_item_tags"]["Row"];
+        Update: Partial<Database["public"]["Tables"]["schedule_item_tags"]["Row"]>;
+        Relationships: [];
+      };
+      task_attachments: {
+        Row: {
+          id: string;
+          schedule_item_id: string;
+          user_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size_bytes: number;
+          mime_type: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["task_attachments"]["Row"]> & {
+          schedule_item_id: string;
+          user_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size_bytes: number;
+          mime_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_attachments"]["Row"]>;
+        Relationships: [];
+      };
+      foods: {
+        Row: {
+          id: string;
+          name: string;
+          brand: string | null;
+          calories: number;
+          protein_g: number;
+          fat_g: number;
+          carbs_g: number;
+          fiber_g: number;
+          sugar_g: number;
+          sodium_mg: number;
+          serving_size: number;
+          serving_unit: string;
+          weight_g: number | null;
+          default_meal_type: MealType | null;
+          source: FoodSource;
+          external_id: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["foods"]["Row"]> & {
+          name: string;
+          calories: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["foods"]["Row"]>;
+        Relationships: [];
+      };
+      food_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          food_id: string | null;
+          meal_type: MealType;
+          logged_at: string;
+          quantity: number;
+          calories: number;
+          protein_g: number;
+          fat_g: number;
+          carbs_g: number;
+          fiber_g: number;
+          sugar_g: number;
+          sodium_mg: number;
+          notes: string | null;
+          name: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["food_logs"]["Row"]> & {
+          user_id: string;
+          meal_type: MealType;
+          calories: number;
+          protein_g: number;
+          fat_g: number;
+          carbs_g: number;
+          fiber_g: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["food_logs"]["Row"]>;
+        Relationships: [];
+      };
+      water_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_at: string;
+          amount_ml: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["water_logs"]["Row"]> & {
+          user_id: string;
+          amount_ml: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["water_logs"]["Row"]>;
+        Relationships: [];
+      };
+      body_metrics: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_for_date: string;
+          weight_kg: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["body_metrics"]["Row"]> & {
+          user_id: string;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["body_metrics"]["Row"]>;
+        Relationships: [];
+      };
+      nutrition_settings: {
+        Row: {
+          user_id: string;
+          daily_calorie_goal: number;
+          protein_goal_g: number;
+          carbs_goal_g: number;
+          fat_goal_g: number;
+          fiber_goal_g: number;
+          water_goal_ml: number;
+          height_cm: number | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["nutrition_settings"]["Row"]>;
+        Relationships: [];
+      };
+      courses: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          subject: string;
+          description: string | null;
+          color: string | null;
+          icon: string | null;
+          exam_date: string | null;
+          daily_study_goal_minutes: number | null;
+          status: "active" | "completed" | "archived";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["courses"]["Row"]> & {
+          user_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["courses"]["Row"]>;
+        Relationships: [];
+      };
+      lessons: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          content: string | null;
+          is_bookmarked: boolean;
+          is_completed: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["lessons"]["Row"]> & {
+          course_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["lessons"]["Row"]>;
+        Relationships: [];
+      };
+      flashcards: {
+        Row: {
+          id: string;
+          course_id: string;
+          lesson_id: string | null;
+          front: string;
+          back: string;
+          ease_factor: number;
+          interval_days: number;
+          repetitions: number;
+          due_at: string;
+          last_reviewed_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["flashcards"]["Row"]> & {
+          course_id: string;
+          front: string;
+          back: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["flashcards"]["Row"]>;
+        Relationships: [];
+      };
+      quizzes: {
+        Row: {
+          id: string;
+          course_id: string;
+          lesson_id: string | null;
+          title: string;
+          questions: {
+            question: string;
+            options: string[];
+            correctIndex: number;
+            explanation: string;
+          }[];
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["quizzes"]["Row"]> & {
+          course_id: string;
+          title: string;
+          questions: {
+            question: string;
+            options: string[];
+            correctIndex: number;
+            explanation: string;
+          }[];
+        };
+        Update: Partial<Database["public"]["Tables"]["quizzes"]["Row"]>;
+        Relationships: [];
+      };
+      quiz_attempts: {
+        Row: {
+          id: string;
+          quiz_id: string;
+          user_id: string;
+          score_pct: number;
+          answers: number[];
+          completed_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["quiz_attempts"]["Row"]> & {
+          quiz_id: string;
+          user_id: string;
+          score_pct: number;
+          answers: number[];
+        };
+        Update: Partial<Database["public"]["Tables"]["quiz_attempts"]["Row"]>;
+        Relationships: [];
+      };
+      study_sessions: {
+        Row: {
+          id: string;
+          user_id: string;
+          course_id: string | null;
+          started_at: string;
+          duration_minutes: number;
+          logged_for_date: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["study_sessions"]["Row"]> & {
+          user_id: string;
+          duration_minutes: number;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["study_sessions"]["Row"]>;
+        Relationships: [];
+      };
+      trips: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          destination: string;
+          destination_lat: number | null;
+          destination_lng: number | null;
+          start_date: string;
+          end_date: string;
+          budget: number | null;
+          currency: string;
+          transportation: "flight" | "train" | "car" | "bus" | "other" | null;
+          status: "planning" | "upcoming" | "active" | "completed" | "archived";
+          weather_summary: string | null;
+          packing_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["trips"]["Row"]> & {
+          user_id: string;
+          title: string;
+          destination: string;
+          start_date: string;
+          end_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trips"]["Row"]>;
+        Relationships: [];
+      };
+      trip_itinerary_items: {
+        Row: {
+          id: string;
+          trip_id: string;
+          day_number: number;
+          start_time: string | null;
+          title: string;
+          type: "attraction" | "restaurant" | "activity" | "transport" | "hotel" | "free_time";
+          place_name: string | null;
+          address: string | null;
+          lat: number | null;
+          lng: number | null;
+          estimated_cost: number | null;
+          estimated_duration_minutes: number | null;
+          notes: string | null;
+          sort_order: number;
+          added_to_calendar: boolean;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["trip_itinerary_items"]["Row"]> & {
+          trip_id: string;
+          day_number: number;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trip_itinerary_items"]["Row"]>;
+        Relationships: [];
+      };
+      trip_packing_items: {
+        Row: {
+          id: string;
+          trip_id: string;
+          item: string;
+          category: string;
+          is_packed: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["trip_packing_items"]["Row"]> & {
+          trip_id: string;
+          item: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["trip_packing_items"]["Row"]>;
+        Relationships: [];
+      };
+      activity_suggestions: {
+        Row: {
+          id: string;
+          user_id: string;
+          categories: string[];
+          filters: Record<string, unknown>;
+          results: Record<string, unknown>[];
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["activity_suggestions"]["Row"]> & {
+          user_id: string;
+          categories: string[];
+          filters: Record<string, unknown>;
+          results: Record<string, unknown>[];
+        };
+        Update: Partial<Database["public"]["Tables"]["activity_suggestions"]["Row"]>;
+        Relationships: [];
+      };
+      saved_activities: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: "place" | "event";
+          title: string;
+          subtitle: string;
+          lat: number;
+          lng: number;
+          starts_at: string | null;
+          data: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["saved_activities"]["Row"]> & {
+          user_id: string;
+          kind: "place" | "event";
+          title: string;
+          subtitle: string;
+          lat: number;
+          lng: number;
+          data: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["saved_activities"]["Row"]>;
+        Relationships: [];
+      };
+      goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string | null;
+          category: GoalCategory;
+          priority: "low" | "medium" | "high";
+          status: "active" | "completed" | "archived";
+          color: string | null;
+          icon: string | null;
+          deadline: string | null;
+          target_value: number | null;
+          current_value: number;
+          unit: string | null;
+          manual_progress_pct: number | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["goals"]["Row"]> & {
+          user_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["goals"]["Row"]>;
+        Relationships: [];
+      };
+      goal_milestones: {
+        Row: {
+          id: string;
+          goal_id: string;
+          title: string;
+          is_completed: boolean;
+          sort_order: number;
+          completed_at: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["goal_milestones"]["Row"]> & {
+          goal_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["goal_milestones"]["Row"]>;
+        Relationships: [];
+      };
+      finance_settings: {
+        Row: {
+          user_id: string;
+          currency: string;
+          monthly_income_estimate: number | null;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_settings"]["Row"]> & {
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_settings"]["Row"]>;
+        Relationships: [];
+      };
+      finance_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          amount: number;
+          currency: string;
+          billing_cycle: BillingCycle;
+          category: string;
+          next_billing_date: string | null;
+          is_active: boolean;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_subscriptions"]["Row"]> & {
+          user_id: string;
+          name: string;
+          amount: number;
+          billing_cycle: BillingCycle;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_subscriptions"]["Row"]>;
+        Relationships: [];
+      };
+      transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: TransactionType;
+          amount: number;
+          currency: string;
+          category: string;
+          description: string | null;
+          occurred_at: string;
+          subscription_id: string | null;
+          receipt_storage_path: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["transactions"]["Row"]> & {
+          user_id: string;
+          type: TransactionType;
+          amount: number;
+          category: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["transactions"]["Row"]>;
+        Relationships: [];
+      };
+      finance_budgets: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          monthly_limit: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_budgets"]["Row"]> & {
+          user_id: string;
+          category: string;
+          monthly_limit: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_budgets"]["Row"]>;
+        Relationships: [];
+      };
+      finance_loans: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          principal_amount: number;
+          remaining_balance: number;
+          interest_rate_pct: number | null;
+          monthly_payment: number | null;
+          start_date: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_loans"]["Row"]> & {
+          user_id: string;
+          name: string;
+          principal_amount: number;
+          remaining_balance: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_loans"]["Row"]>;
+        Relationships: [];
+      };
+      finance_assets: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          asset_type: AssetType;
+          current_value: number;
+          currency: string;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_assets"]["Row"]> & {
+          user_id: string;
+          name: string;
+          asset_type: AssetType;
+          current_value: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_assets"]["Row"]>;
+        Relationships: [];
+      };
+      task_subtasks: {
+        Row: {
+          id: string;
+          schedule_item_id: string;
+          title: string;
+          is_completed: boolean;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["task_subtasks"]["Row"]> & {
+          schedule_item_id: string;
+          title: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["task_subtasks"]["Row"]>;
+        Relationships: [];
+      };
+      recipe_ingredients: {
+        Row: {
+          id: string;
+          recipe_food_id: string;
+          ingredient_food_id: string | null;
+          quantity: number;
+          sort_order: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["recipe_ingredients"]["Row"]> & {
+          recipe_food_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["recipe_ingredients"]["Row"]>;
+        Relationships: [];
+      };
+      user_favorite_foods: {
+        Row: {
+          user_id: string;
+          food_id: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_favorite_foods"]["Row"]> & {
+          user_id: string;
+          food_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_favorite_foods"]["Row"]>;
+        Relationships: [];
+      };
+      meal_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          meal_type: MealType | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["meal_templates"]["Row"]> & {
+          user_id: string;
+          name: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meal_templates"]["Row"]>;
+        Relationships: [];
+      };
+      meal_template_items: {
+        Row: {
+          id: string;
+          template_id: string;
+          food_id: string | null;
+          quantity: number;
+          sort_order: number;
+        };
+        Insert: Partial<Database["public"]["Tables"]["meal_template_items"]["Row"]> & {
+          template_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["meal_template_items"]["Row"]>;
+        Relationships: [];
+      };
+      health_metrics: {
+        Row: {
+          id: string;
+          user_id: string;
+          logged_for_date: string;
+          sleep_hours: number | null;
+          sleep_quality: number | null;
+          bedtime: string | null;
+          wake_time: string | null;
+          steps: number | null;
+          calories_burned: number | null;
+          resting_heart_rate: number | null;
+          avg_heart_rate: number | null;
+          active_minutes: number | null;
+          exercise_type: string | null;
+          exercise_minutes: number | null;
+          distance_km: number | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["health_metrics"]["Row"]> & {
+          user_id: string;
+          logged_for_date: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["health_metrics"]["Row"]>;
+        Relationships: [];
+      };
+      ai_predictions: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: "goal" | "health" | "habit" | "finance" | "productivity";
+          prediction: string;
+          confidence_pct: number;
+          reasoning: string;
+          recommendation: string;
+          related_entity_type: string | null;
+          related_entity_id: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["ai_predictions"]["Row"]> & {
+          user_id: string;
+          category: "goal" | "health" | "habit" | "finance" | "productivity";
+          prediction: string;
+          confidence_pct: number;
+          reasoning: string;
+          recommendation: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ai_predictions"]["Row"]>;
+        Relationships: [];
+      };
+      coach_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          period: "daily" | "weekly" | "monthly";
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["coach_insights"]["Row"]> & {
+          user_id: string;
+          period: "daily" | "weekly" | "monthly";
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["coach_insights"]["Row"]>;
+        Relationships: [];
+      };
+      finance_insights: {
+        Row: {
+          id: string;
+          user_id: string;
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["finance_insights"]["Row"]> & {
+          user_id: string;
+          headline: string;
+          insights: { title: string; detail: string }[];
+          signals: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["finance_insights"]["Row"]>;
+        Relationships: [];
+      };
+      memories: {
+        Row: {
+          id: string;
+          user_id: string;
+          source_type: MemorySourceType;
+          source_id: string | null;
+          title: string;
+          content: string;
+          summary: string | null;
+          category: string | null;
+          tags: string[];
+          embedding: number[] | null;
+          pinned: boolean;
+          favorited: boolean;
+          occurred_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["memories"]["Row"]> & {
+          user_id: string;
+          source_type: MemorySourceType;
+          title: string;
+          content: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["memories"]["Row"]>;
+        Relationships: [];
+      };
+      user_stats: {
+        Row: {
+          user_id: string;
+          xp: number;
+          coins: number;
+          updated_at: string;
+          achievements_last_seen_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_stats"]["Row"]> & { user_id: string };
+        Update: Partial<Database["public"]["Tables"]["user_stats"]["Row"]>;
+        Relationships: [];
+      };
+      user_achievements: {
+        Row: {
+          id: string;
+          user_id: string;
+          achievement_id: string;
+          progress_current: number;
+          unlocked_at: string;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_achievements"]["Row"]> & {
+          user_id: string;
+          achievement_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_achievements"]["Row"]>;
+        Relationships: [];
+      };
+      xp_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          source: string;
+          related_id: string | null;
+          xp_awarded: number;
+          coins_awarded: number;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["xp_events"]["Row"]> & {
+          user_id: string;
+          source: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["xp_events"]["Row"]>;
+        Relationships: [];
+      };
+      user_rewards: {
+        Row: {
+          id: string;
+          user_id: string;
+          reward_id: string;
+          unlocked_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_rewards"]["Row"]> & {
+          user_id: string;
+          reward_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_rewards"]["Row"]>;
+        Relationships: [];
+      };
+      user_reward_equips: {
+        Row: {
+          user_id: string;
+          category: string;
+          reward_id: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["user_reward_equips"]["Row"]> & {
+          user_id: string;
+          category: string;
+          reward_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_reward_equips"]["Row"]>;
+        Relationships: [];
+      };
+      automations: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          description: string | null;
+          enabled: boolean;
+          source: "manual" | "ai_generated";
+          trigger: Record<string, unknown>;
+          condition_groups: Record<string, unknown>;
+          actions: Record<string, unknown>;
+          last_run_at: string | null;
+          last_fired_date: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["automations"]["Row"]> & {
+          user_id: string;
+          name: string;
+          trigger: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["automations"]["Row"]>;
+        Relationships: [];
+      };
+      automation_runs: {
+        Row: {
+          id: string;
+          automation_id: string;
+          user_id: string;
+          ran_at: string;
+          status: "matched" | "skipped" | "error";
+          actions_taken: Record<string, unknown>;
+          error_message: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["automation_runs"]["Row"]> & {
+          automation_id: string;
+          user_id: string;
+          status: "matched" | "skipped" | "error";
+        };
+        Update: Partial<Database["public"]["Tables"]["automation_runs"]["Row"]>;
+        Relationships: [];
+      };
+      automation_suggestions: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          description: string;
+          evidence: Record<string, unknown>;
+          proposed_trigger: Record<string, unknown>;
+          proposed_condition_groups: Record<string, unknown>;
+          proposed_actions: Record<string, unknown>;
+          status: "pending" | "accepted" | "dismissed";
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["automation_suggestions"]["Row"]> & {
+          user_id: string;
+          title: string;
+          description: string;
+          evidence: Record<string, unknown>;
+          proposed_trigger: Record<string, unknown>;
+          proposed_actions: Record<string, unknown>;
+        };
+        Update: Partial<Database["public"]["Tables"]["automation_suggestions"]["Row"]>;
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: {
+      match_memories: {
+        Args: { query_embedding: number[]; match_user_id: string; match_count?: number };
+        Returns: {
+          id: string;
+          title: string;
+          content: string;
+          summary: string | null;
+          category: string | null;
+          tags: string[];
+          source_type: MemorySourceType;
+          source_id: string | null;
+          occurred_at: string;
+          pinned: boolean;
+          favorited: boolean;
+          similarity: number;
+        }[];
+      };
+      match_related_memories: {
+        Args: { target_memory_id: string; match_count?: number };
+        Returns: {
+          id: string;
+          title: string;
+          content: string;
+          category: string | null;
+          occurred_at: string;
+          similarity: number;
+        }[];
+      };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
+
+export type Tables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Row"];
+export type InsertTables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Insert"];
+export type UpdateTables<T extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][T]["Update"];

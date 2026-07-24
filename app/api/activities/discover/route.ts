@@ -1,0 +1,104 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
+import { discoverActivities } from "@/lib/activities/discover";
+import { ACTIVITY_CATEGORIES } from "@/lib/activities/geoapify-client";
+import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/get-locale";
+import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
+import { sendPushToUser } from "@/lib/notifications/push";
+
+const categoryEnum = z.enum(
+  Object.keys(ACTIVITY_CATEGORIES) as [keyof typeof ACTIVITY_CATEGORIES],
+);
+
+const smartFiltersSchema = z.object({
+  openOnly: z.boolean().optional(),
+  minRating: z.number().min(0).max(5).optional(),
+  maxTravelMinutes: z.number().int().positive().max(1440).optional(),
+  wheelchairAccessible: z.boolean().optional(),
+  popular: z.boolean().optional(),
+  hiddenGems: z.boolean().optional(),
+  freeOnly: z.boolean().optional(),
+  luxury: z.boolean().optional(),
+  fastVisit: z.boolean().optional(),
+  longActivities: z.boolean().optional(),
+});
+
+const bodySchema = z.object({
+  categories: z.array(categoryEnum).min(1).max(6),
+  location: z.object({ lat: z.number(), lng: z.number() }),
+  maxDistanceKm: z.number().positive().max(50),
+  availableMinutes: z.number().int().positive().max(1440),
+  budget: z.enum(["free", "low", "medium", "high"]),
+  indoorOutdoor: z.enum(["indoor", "outdoor", "any"]),
+  social: z.enum(["solo", "group", "any"]),
+  resultCount: z.number().int().min(3).max(50).optional(),
+  smartFilters: smartFiltersSchema.optional(),
+  preferenceHints: z.array(z.enum(["familyFriendly", "petFriendly", "romantic"])).max(3).optional(),
+  intentNote: z.string().max(300).optional(),
+});
+
+export async function POST(request: Request) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const json = await request.json().catch(() => null);
+  const parsed = bodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const { locale, t } = await getDictionary();
+    const suggestions = await discoverActivities(parsed.data, locale);
+
+    await supabase.from("activity_suggestions").insert({
+      user_id: user.id,
+      categories: parsed.data.categories,
+      filters: parsed.data,
+      results: suggestions as unknown as Record<string, unknown>[],
+    });
+
+    // This request is normally answered while the user is watching the
+    // Discover page, but the category toggle lets them opt in to a push too
+    // (e.g. they navigated away, or installed LifeFlow as a PWA and want a
+    // ping when a search they kicked off finishes).
+    if (suggestions.length > 0) {
+      const { data: notifSettings } = await supabase
+        .from("user_settings")
+        .select("notification_prefs, reminder_frequency")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).single();
+      if (
+        isNotificationEnabled(notifSettings?.notification_prefs, "discover_recommendation") &&
+        isNotificationDueForFrequency("discover_recommendation", notifSettings?.reminder_frequency)
+      ) {
+        await sendPushToUser(supabase, user.id, profile?.timezone ?? "UTC", {
+          title: t.notifications.newDiscoverRecommendationsTitle,
+          body: t.notifications.newDiscoverRecommendationsBody.replace(
+            "{count}",
+            String(suggestions.length),
+          ),
+        });
+      }
+    }
+
+    return NextResponse.json({ data: suggestions });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Activity discovery failed" },
+      { status: 502 },
+    );
+  }
+}

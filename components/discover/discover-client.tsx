@@ -1,0 +1,565 @@
+"use client";
+
+import * as React from "react";
+import { ChevronDownIcon, CompassIcon, Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react";
+import { toast } from "sonner";
+
+import { generateSimilarActivities, parseDiscoverQuery, saveActivity } from "@/app/(app)/discover/actions";
+import { CategorySelector } from "@/components/discover/category-selector";
+import { EventCard } from "@/components/discover/event-card";
+import { InteractiveMap, type MapPoint } from "@/components/discover/interactive-map";
+import { LocationSearchBox } from "@/components/discover/location-search-box";
+import { NaturalLanguageSearch } from "@/components/discover/natural-language-search";
+import { SavedActivitiesList } from "@/components/discover/saved-activities-list";
+import { SmartFiltersPanel, type PreferenceHint } from "@/components/discover/smart-filters-panel";
+import { SuggestionCard } from "@/components/discover/suggestion-card";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { LatLng } from "@/lib/activities/distance";
+import type { ActivitySuggestion, DiscoverSmartFilters } from "@/lib/activities/discover";
+import type { ActivityCategory } from "@/lib/activities/geoapify-client";
+import type { EventCandidate } from "@/lib/activities/ticketmaster-client";
+import { cn } from "@/lib/utils";
+import type { Tables } from "@/types/database";
+
+type ResultCountPreset = "5" | "10" | "20" | "50" | "custom";
+
+type LocationState =
+  | { status: "idle" }
+  | { status: "requesting" }
+  | { status: "ready"; lat: number; lng: number }
+  | { status: "error"; message: string };
+
+type EventWithDistance = EventCandidate & { distanceKm: number };
+
+export function DiscoverClient({
+  eventsAvailable,
+  initialSavedActivities,
+}: {
+  eventsAvailable: boolean;
+  initialSavedActivities: Tables<"saved_activities">[];
+}) {
+  const [categories, setCategories] = React.useState<ActivityCategory[]>(["restaurants", "parks"]);
+  const [includeEvents, setIncludeEvents] = React.useState(false);
+  const [maxDistanceKm, setMaxDistanceKm] = React.useState("5");
+  const [availableMinutes, setAvailableMinutes] = React.useState("120");
+  const [budget, setBudget] = React.useState("low");
+  const [indoorOutdoor, setIndoorOutdoor] = React.useState("any");
+  const [social, setSocial] = React.useState("any");
+  const [resultCountPreset, setResultCountPreset] = React.useState<ResultCountPreset>("10");
+  const [customResultCount, setCustomResultCount] = React.useState("15");
+  const [smartFilters, setSmartFilters] = React.useState<DiscoverSmartFilters>({});
+  const [openOnly, setOpenOnly] = React.useState(false);
+  const [preferenceHints, setPreferenceHints] = React.useState<PreferenceHint[]>([]);
+  const [minRating, setMinRating] = React.useState("none");
+  const [maxTravelMinutes, setMaxTravelMinutes] = React.useState("none");
+  const [intentNote, setIntentNote] = React.useState<string | undefined>(undefined);
+  const [isParsingQuery, setIsParsingQuery] = React.useState(false);
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
+
+  const [location, setLocation] = React.useState<LocationState>({ status: "idle" });
+  const [isSearching, setIsSearching] = React.useState(false);
+  const [suggestions, setSuggestions] = React.useState<ActivitySuggestion[] | null>(null);
+  const [events, setEvents] = React.useState<EventWithDistance[] | null>(null);
+  const [searchError, setSearchError] = React.useState<string | null>(null);
+  const [isGeneratingSimilar, setIsGeneratingSimilar] = React.useState(false);
+  const [savedKeys, setSavedKeys] = React.useState<Set<string>>(new Set());
+  const [mapCenter, setMapCenter] = React.useState<LatLng | null>(null);
+  const [searchedCenter, setSearchedCenter] = React.useState<LatLng | null>(null);
+
+  function requestLocation() {
+    if (!("geolocation" in navigator)) {
+      setLocation({ status: "error", message: "Geolocation isn't available in this browser" });
+      return;
+    }
+    setLocation({ status: "requesting" });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          status: "ready",
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      () => {
+        setLocation({
+          status: "error",
+          message: "Location permission denied — allow it in your browser to find nearby places",
+        });
+      },
+      { enableHighAccuracy: false, timeout: 10_000 },
+    );
+  }
+
+  async function handleSearch(overrideLocation?: LatLng, overrideIntentNote?: string) {
+    const searchLocation = overrideLocation ?? (location.status === "ready" ? location : null);
+    if (!searchLocation) {
+      requestLocation();
+      return;
+    }
+    if (categories.length === 0 && !includeEvents) {
+      toast.error("Pick at least one category");
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+    try {
+      const requests: Promise<void>[] = [];
+      const effectiveIntentNote = overrideIntentNote !== undefined ? overrideIntentNote : intentNote;
+
+      if (categories.length > 0) {
+        const resultCount =
+          resultCountPreset === "custom" ? Number(customResultCount) : Number(resultCountPreset);
+        const effectiveFilters: DiscoverSmartFilters = {
+          ...smartFilters,
+          ...(openOnly ? { openOnly: true } : {}),
+          ...(minRating !== "none" ? { minRating: Number(minRating) } : {}),
+          ...(maxTravelMinutes !== "none" ? { maxTravelMinutes: Number(maxTravelMinutes) } : {}),
+        };
+
+        requests.push(
+          fetch("/api/activities/discover", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              categories,
+              location: { lat: searchLocation.lat, lng: searchLocation.lng },
+              maxDistanceKm: Number(maxDistanceKm),
+              availableMinutes: Number(availableMinutes),
+              budget,
+              indoorOutdoor,
+              social,
+              resultCount,
+              smartFilters: effectiveFilters,
+              preferenceHints,
+              ...(effectiveIntentNote ? { intentNote: effectiveIntentNote } : {}),
+            }),
+          })
+            .then((r) => r.json())
+            .then((json) => setSuggestions(json.data ?? [])),
+        );
+      } else {
+        setSuggestions([]);
+      }
+
+      if (includeEvents) {
+        requests.push(
+          fetch("/api/activities/events", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              location: { lat: searchLocation.lat, lng: searchLocation.lng },
+              maxDistanceKm: Number(maxDistanceKm),
+            }),
+          })
+            .then((r) => r.json())
+            .then((json) => setEvents(json.data ?? [])),
+        );
+      } else {
+        setEvents(null);
+      }
+
+      await Promise.all(requests);
+      setSearchedCenter(searchLocation);
+      setMapCenter(searchLocation);
+    } catch {
+      setSearchError("Couldn't reach the activity discovery service");
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  async function handleNaturalLanguageSearch(query: string) {
+    setIsParsingQuery(true);
+    try {
+      const parsed = await parseDiscoverQuery(query);
+      if (parsed.categories.length > 0) setCategories(parsed.categories);
+      if (parsed.budget) setBudget(parsed.budget);
+      if (parsed.openOnly) setOpenOnly(true);
+      if (parsed.minRating) setMinRating(String(parsed.minRating));
+      if (parsed.availableMinutes) setAvailableMinutes(String(parsed.availableMinutes));
+      setIntentNote(query);
+      await handleSearch(undefined, query);
+    } finally {
+      setIsParsingQuery(false);
+    }
+  }
+
+  function handleLocationSelect(selected: LatLng) {
+    setLocation({ status: "ready", lat: selected.lat, lng: selected.lng });
+    handleSearch(selected);
+  }
+
+  function handleLongPress(pressed: LatLng) {
+    handleSearch(pressed);
+  }
+
+  function distanceKm(a: LatLng, b: LatLng): number {
+    const dLat = a.lat - b.lat;
+    const dLng = a.lng - b.lng;
+    return Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+  }
+
+  async function handleSaveFromMap(point: MapPoint) {
+    const suggestion = suggestions?.find((s, i) => `s-${s.placeName}-${i}` === point.key);
+    const event = events?.find((e) => `e-${e.id}` === point.key);
+
+    const payload = suggestion
+      ? {
+          kind: "place" as const,
+          title: suggestion.title,
+          subtitle: suggestion.placeName,
+          lat: suggestion.location.lat,
+          lng: suggestion.location.lng,
+          data: suggestion as unknown as Record<string, unknown>,
+        }
+      : event
+        ? {
+            kind: "event" as const,
+            title: event.name,
+            subtitle: event.venueName,
+            lat: event.location.lat,
+            lng: event.location.lng,
+            startsAt: event.startIso,
+            data: event as unknown as Record<string, unknown>,
+          }
+        : null;
+
+    if (!payload) return;
+
+    const result = await saveActivity(payload);
+    if (result.error) {
+      toast.error("Couldn't save that", { description: result.error });
+      return;
+    }
+    setSavedKeys((prev) => new Set(prev).add(point.key));
+    toast.success("Saved for later");
+  }
+
+  async function handleGenerateSimilar(reference: ActivitySuggestion) {
+    if (location.status !== "ready") return;
+    setIsGeneratingSimilar(true);
+    try {
+      const result = await generateSimilarActivities({
+        category: reference.category,
+        location: { lat: location.lat, lng: location.lng },
+        maxDistanceKm: Number(maxDistanceKm),
+        availableMinutes: Number(availableMinutes),
+        budget: budget as "free" | "low" | "medium" | "high",
+        indoorOutdoor: indoorOutdoor as "indoor" | "outdoor" | "any",
+        social: social as "solo" | "group" | "any",
+        referencePlaceName: reference.placeName,
+        referencePitch: reference.pitch,
+      });
+      if (result.error) {
+        toast.error("Couldn't find similar activities", { description: result.error });
+        return;
+      }
+      const found = result.suggestions ?? [];
+      if (found.length === 0) {
+        toast.info("No similar places found nearby");
+        return;
+      }
+      setSuggestions((prev) => [...found, ...(prev ?? [])]);
+      toast.success(`Found ${found.length} more like "${reference.placeName}"`);
+    } finally {
+      setIsGeneratingSimilar(false);
+    }
+  }
+
+  return (
+    <Tabs defaultValue="discover" className="flex flex-col gap-6">
+      <TabsList>
+        <TabsTrigger value="discover">Discover</TabsTrigger>
+        <TabsTrigger value="saved">Saved</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="discover" className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+          <NaturalLanguageSearch onSearch={handleNaturalLanguageSearch} isParsing={isParsingQuery} />
+
+          <div className="flex flex-col gap-1.5">
+            <Label>What are you in the mood for?</Label>
+            <CategorySelector
+              selected={categories}
+              onChange={setCategories}
+              includeEvents={includeEvents}
+              onToggleEvents={() => setIncludeEvents((v) => !v)}
+              eventsAvailable={eventsAvailable}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="maxDistanceKm">Distance (km)</Label>
+              <Input
+                id="maxDistanceKm"
+                type="number"
+                min={0.5}
+                step="0.5"
+                value={maxDistanceKm}
+                onChange={(e) => setMaxDistanceKm(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="budget">Budget</Label>
+              <Select value={budget} onValueChange={setBudget}>
+                <SelectTrigger id="budget">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="low">$</SelectItem>
+                  <SelectItem value="medium">$$</SelectItem>
+                  <SelectItem value="high">$$$</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="minRating">Rating</Label>
+              <Select value={minRating} onValueChange={setMinRating}>
+                <SelectTrigger id="minRating">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Any</SelectItem>
+                  <SelectItem value="3">3.0+</SelectItem>
+                  <SelectItem value="4">4.0+</SelectItem>
+                  <SelectItem value="4.5">4.5+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col justify-end gap-1.5">
+              <Label htmlFor="openOnly">Availability</Label>
+              <button
+                id="openOnly"
+                type="button"
+                aria-pressed={openOnly}
+                onClick={() => setOpenOnly((v) => !v)}
+                className={cn(
+                  "flex h-9 items-center justify-center rounded-md border text-sm font-medium transition-colors",
+                  openOnly
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-input bg-transparent hover:bg-accent",
+                )}
+              >
+                Open now
+              </button>
+            </div>
+          </div>
+
+          {location.status === "error" && (
+            <p className="text-sm text-destructive">{location.message}</p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => handleSearch()} disabled={isSearching} className="self-start">
+              {isSearching ? (
+                <Loader2Icon className="animate-spin" />
+              ) : location.status === "ready" ? (
+                <SparklesIcon />
+              ) : (
+                <MapPinIcon />
+              )}
+              {location.status === "ready" ? "Find activities" : "Share location & find activities"}
+            </Button>
+            {location.status === "ready" && (
+              <div className="w-full sm:w-64">
+                <LocationSearchBox onSelect={handleLocationSelect} />
+              </div>
+            )}
+          </div>
+
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 self-start text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDownIcon className={cn("size-3.5 transition-transform", advancedOpen && "rotate-180")} />
+                Advanced filters
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="flex flex-col gap-4 pt-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="availableMinutes">Time available (min)</Label>
+                  <Input
+                    id="availableMinutes"
+                    type="number"
+                    min={10}
+                    step="10"
+                    value={availableMinutes}
+                    onChange={(e) => setAvailableMinutes(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="indoorOutdoor">Setting</Label>
+                  <Select value={indoorOutdoor} onValueChange={setIndoorOutdoor}>
+                    <SelectTrigger id="indoorOutdoor">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any</SelectItem>
+                      <SelectItem value="indoor">Indoor</SelectItem>
+                      <SelectItem value="outdoor">Outdoor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="social">Company</Label>
+                  <Select value={social} onValueChange={setSocial}>
+                    <SelectTrigger id="social">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Either</SelectItem>
+                      <SelectItem value="solo">Solo</SelectItem>
+                      <SelectItem value="group">With others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="resultCount">Number of results</Label>
+                  <Select
+                    value={resultCountPreset}
+                    onValueChange={(v) => setResultCountPreset(v as ResultCountPreset)}
+                  >
+                    <SelectTrigger id="resultCount">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 places</SelectItem>
+                      <SelectItem value="10">10 places</SelectItem>
+                      <SelectItem value="20">20 places</SelectItem>
+                      <SelectItem value="50">50 places</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {resultCountPreset === "custom" && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="customResultCount">Custom count</Label>
+                    <Input
+                      id="customResultCount"
+                      type="number"
+                      min={3}
+                      max={50}
+                      value={customResultCount}
+                      onChange={(e) => setCustomResultCount(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>More filters</Label>
+                <SmartFiltersPanel
+                  filters={smartFilters}
+                  onChange={setSmartFilters}
+                  preferenceHints={preferenceHints}
+                  onPreferenceHintsChange={setPreferenceHints}
+                  maxTravelMinutes={maxTravelMinutes}
+                  onMaxTravelMinutesChange={setMaxTravelMinutes}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+        {searchError && <p className="text-sm text-destructive">{searchError}</p>}
+        {isGeneratingSimilar && (
+          <p className="text-sm text-muted-foreground">Finding more like that…</p>
+        )}
+
+        {location.status === "ready" && (
+          <div className="relative h-80 overflow-hidden rounded-2xl border border-border">
+            <InteractiveMap
+              center={searchedCenter ?? { lat: location.lat, lng: location.lng }}
+              points={[
+                ...(suggestions ?? []).map((s, i) => ({
+                  key: `s-${s.placeName}-${i}`,
+                  location: s.location,
+                  title: s.title,
+                  subtitle: s.placeName,
+                  category: s.category,
+                  isSaved: savedKeys.has(`s-${s.placeName}-${i}`),
+                })),
+                ...(events ?? []).map((e) => ({
+                  key: `e-${e.id}`,
+                  location: e.location,
+                  title: e.name,
+                  subtitle: e.venueName,
+                  category: "event" as const,
+                  isSaved: savedKeys.has(`e-${e.id}`),
+                })),
+              ]}
+              onBoundsChanged={(center) => setMapCenter(center)}
+              onLongPress={handleLongPress}
+              onSave={handleSaveFromMap}
+            />
+            {mapCenter && searchedCenter && distanceKm(mapCenter, searchedCenter) > 0.5 && (
+              <Button
+                size="sm"
+                className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-md"
+                onClick={() => handleSearch(mapCenter)}
+                disabled={isSearching}
+              >
+                {isSearching && <Loader2Icon className="animate-spin" />}
+                Search this area
+              </Button>
+            )}
+          </div>
+        )}
+
+        {events && events.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium text-muted-foreground">Live events nearby</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {suggestions &&
+          (suggestions.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {suggestions.map((suggestion, index) => (
+                <SuggestionCard
+                  key={`${suggestion.placeName}-${index}`}
+                  suggestion={suggestion}
+                  onGenerateSimilar={handleGenerateSimilar}
+                />
+              ))}
+            </div>
+          ) : (
+            (!events || events.length === 0) && (
+              <EmptyState
+                icon={CompassIcon}
+                title="No matches nearby"
+                description="Try a wider distance, a different budget, or a few more categories."
+              />
+            )
+          ))}
+      </TabsContent>
+
+      <TabsContent value="saved">
+        <SavedActivitiesList initial={initialSavedActivities} />
+      </TabsContent>
+    </Tabs>
+  );
+}
