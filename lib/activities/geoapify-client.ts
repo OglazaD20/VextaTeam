@@ -6,7 +6,8 @@ import { ACTIVITY_CATEGORIES, type ActivityCategory } from "./category-taxonomy"
 
 export interface PlaceCandidate {
   name: string;
-  category: string;
+  /** All of Geoapify's raw category tags for this place (not just the first) — inferActivityCategory needs the full list to match correctly. */
+  category: string[];
   address: string | null;
   location: LatLng;
   openingHours: string | null;
@@ -59,7 +60,7 @@ export async function searchNearbyPlaces(
     .filter((f) => f.properties.name)
     .map((f) => ({
       name: f.properties.name!,
-      category: f.properties.categories?.[0] ?? "unknown",
+      category: f.properties.categories ?? [],
       address: f.properties.formatted ?? null,
       location: { lat: f.properties.lat, lng: f.properties.lon },
       openingHours: f.properties.opening_hours ?? null,
@@ -68,23 +69,52 @@ export async function searchNearbyPlaces(
     }));
 }
 
+export interface CategoryInference {
+  category: ActivityCategory;
+  /** "low" means no real tag matched anything in our taxonomy — a last-resort guess that should be re-checked by AI classification rather than trusted. */
+  confidence: "high" | "low";
+}
+
 /**
- * Geoapify only tells us the specific leaf category of a matched place (e.g.
- * "catering.restaurant.pizza"), not which of our requested buckets it came
- * from. Match it back by prefix against each requested bucket's category
- * list so suggestions can be tagged with a single ActivityCategory.
+ * Geoapify returns every tag a place matched (e.g. ["catering.bar",
+ * "catering.pub"]), not which of our requested buckets it came from — and a
+ * place can legitimately match a bucket the caller didn't ask for (a bar
+ * turning up while searching "restaurants" because they're in the same
+ * search radius). Match the real tags against the requested buckets first
+ * (most contextually relevant), then fall back to matching against the
+ * FULL taxonomy so a place never gets mislabeled just because it wasn't one
+ * of the buckets requested — a bar should never be shown as a park. Only
+ * when no real tag matches anything at all do we fall back to a guess,
+ * flagged low-confidence.
  */
 export function inferActivityCategory(
-  rawCategory: string,
+  rawCategories: string[],
   requested: ActivityCategory[],
-): ActivityCategory {
+): CategoryInference {
   for (const bucket of requested) {
     const prefixes = ACTIVITY_CATEGORIES[bucket].split(",");
-    if (prefixes.some((prefix) => rawCategory.startsWith(prefix))) {
-      return bucket;
+    if (rawCategories.some((raw) => prefixes.some((prefix) => raw.startsWith(prefix)))) {
+      return { category: bucket, confidence: "high" };
     }
   }
-  return requested[0];
+
+  // Prefer the most specific (longest) matching prefix across the whole
+  // taxonomy — otherwise a generic umbrella tag like "sport" (active_sports)
+  // would shadow a more specific one like "sport.fitness" (gyms) just
+  // because it's declared earlier, mislabeling a gym as an "active sports" venue.
+  let bestMatch: { bucket: ActivityCategory; prefixLength: number } | null = null;
+  for (const [bucket, categoryString] of Object.entries(ACTIVITY_CATEGORIES) as [ActivityCategory, string][]) {
+    for (const prefix of categoryString.split(",")) {
+      if (rawCategories.some((raw) => raw.startsWith(prefix)) && (!bestMatch || prefix.length > bestMatch.prefixLength)) {
+        bestMatch = { bucket, prefixLength: prefix.length };
+      }
+    }
+  }
+  if (bestMatch) {
+    return { category: bestMatch.bucket, confidence: "high" };
+  }
+
+  return { category: requested[0], confidence: "low" };
 }
 
 export interface GeocodeResult {

@@ -4,6 +4,8 @@ import type { NormalizedPlace, PlaceSource } from "./types";
 export interface MergedPlace {
   name: string;
   category: NormalizedPlace["category"];
+  /** "low" means no provider's real tags confidently matched our taxonomy — a candidate for AI reclassification (see classify-category.ts) before it's shown to a user. */
+  categoryConfidence: NormalizedPlace["categoryConfidence"];
   address: string | null;
   location: NormalizedPlace["location"];
   openingHours: string | null;
@@ -63,8 +65,25 @@ export function computeQualityScore(input: {
   return Math.round((input.rating * (0.5 + 0.5 * reviewWeight) + multiSourceBonus) * 100) / 100;
 }
 
+/**
+ * Prefers a high-confidence category from any source over Geoapify's,
+ * since a low-confidence guess should never win just because Geoapify is
+ * the baseline provider — a confident Google/TripAdvisor tag match is more
+ * trustworthy than an unmatched Geoapify tag.
+ */
+function pickCategory(cluster: NormalizedPlace[]): Pick<NormalizedPlace, "category" | "categoryConfidence"> {
+  const geoapifyEntry = cluster.find((c) => c.source === "geoapify");
+  if (geoapifyEntry?.categoryConfidence === "high") return geoapifyEntry;
+
+  const anyHighConfidence = cluster.find((c) => c.categoryConfidence === "high");
+  if (anyHighConfidence) return anyHighConfidence;
+
+  return geoapifyEntry ?? cluster[0];
+}
+
 function mergeCluster(cluster: NormalizedPlace[]): MergedPlace {
   const base = cluster.find((c) => c.source === "geoapify") ?? cluster[0];
+  const { category, categoryConfidence } = pickCategory(cluster);
   const rated = cluster.filter(
     (c): c is NormalizedPlace & { rating: number } => c.rating !== null,
   );
@@ -92,7 +111,8 @@ function mergeCluster(cluster: NormalizedPlace[]): MergedPlace {
 
   return {
     name: base.name,
-    category: base.category,
+    category,
+    categoryConfidence,
     address: cluster.find((c) => c.address)?.address ?? null,
     location: base.location,
     openingHours: cluster.find((c) => c.openingHours)?.openingHours ?? null,

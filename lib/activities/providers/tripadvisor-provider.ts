@@ -55,14 +55,22 @@ export const tripAdvisorProvider: PlaceProvider = {
   async search({ categories, location, limit }: PlaceSearchParams): Promise<NormalizedPlace[]> {
     if (!env.TRIPADVISOR_API_KEY) return [];
 
-    const category = categories.map((c) => TRIPADVISOR_CATEGORY[c]).find(Boolean);
-    if (!category) return [];
+    const taCategory = categories.map((c) => TRIPADVISOR_CATEGORY[c]).find(Boolean);
+    if (!taCategory) return [];
+
+    // TripAdvisor's Content API only buckets into "restaurants"/"attractions" —
+    // far coarser than our taxonomy. When more than one of our categories maps
+    // onto the same TripAdvisor bucket, picking the first requested one is a
+    // genuine guess, so flag it low-confidence for AI reclassification.
+    const bucketAmbiguous =
+      Object.values(TRIPADVISOR_CATEGORY).filter((c) => c === taCategory).length > 1;
+    const resultCategory = categories[0];
 
     try {
       const searchUrl = new URL("https://api.content.tripadvisor.com/api/v1/location/search");
       searchUrl.searchParams.set("key", env.TRIPADVISOR_API_KEY);
       searchUrl.searchParams.set("latLong", `${location.lat},${location.lng}`);
-      searchUrl.searchParams.set("category", category);
+      searchUrl.searchParams.set("category", taCategory);
       searchUrl.searchParams.set(
         "searchQuery",
         categories.map((c) => ACTIVITY_CATEGORY_LABEL[c]).join(" "),
@@ -106,7 +114,8 @@ export const tripAdvisorProvider: PlaceProvider = {
             source: "tripadvisor" as const,
             sourceId: c.location_id,
             name: c.name,
-            category: categories[0],
+            category: resultCategory,
+            categoryConfidence: bucketAmbiguous ? "low" : "high",
             address: c.address_obj?.address_string ?? null,
             location: { lat: Number(c.latitude), lng: Number(c.longitude) },
             openingHours: null,

@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import type { CategoryInference } from "../geoapify-client";
 import type { ActivityCategory } from "../category-taxonomy";
 import type { NormalizedPlace, PlaceProvider, PlaceSearchParams } from "./types";
 
@@ -36,6 +37,12 @@ const GOOGLE_PLACE_TYPE: Record<ActivityCategory, string> = {
   relax: "spa",
 };
 
+/** Reverse of GOOGLE_PLACE_TYPE — a Google type can map to more than one of our categories (e.g. "gym" covers both gyms and pools). */
+const GOOGLE_TYPE_TO_CATEGORIES: Partial<Record<string, ActivityCategory[]>> = {};
+for (const [category, type] of Object.entries(GOOGLE_PLACE_TYPE) as [ActivityCategory, string][]) {
+  (GOOGLE_TYPE_TO_CATEGORIES[type] ??= []).push(category);
+}
+
 interface GoogleNearbySearchResult {
   place_id: string;
   name: string;
@@ -47,6 +54,37 @@ interface GoogleNearbySearchResult {
   opening_hours?: { open_now?: boolean };
   photos?: { photo_reference: string }[];
   business_status?: string;
+  /** Google's own type tags for the place — the real signal for category, unlike the single type we queried with. */
+  types?: string[];
+}
+
+/**
+ * Google's Nearby Search is queried with a single `type`, but every result
+ * carries its own real `types` array — using that (instead of blindly
+ * trusting the query type) is what stops e.g. a museum surfacing under a
+ * "restaurant" search from being mislabeled as a restaurant.
+ */
+function inferGoogleCategory(
+  types: string[] | undefined,
+  requested: ActivityCategory[],
+  queriedCategory: ActivityCategory,
+): CategoryInference {
+  const candidates = new Set<ActivityCategory>();
+  for (const type of types ?? []) {
+    for (const category of GOOGLE_TYPE_TO_CATEGORIES[type] ?? []) candidates.add(category);
+  }
+
+  for (const bucket of requested) {
+    if (candidates.has(bucket)) return { category: bucket, confidence: "high" };
+  }
+  if (candidates.size === 1) {
+    return { category: [...candidates][0], confidence: "high" };
+  }
+
+  // Either Google gave no usable type, or several equally plausible buckets
+  // with none matching what was requested — genuinely ambiguous from real
+  // data alone, so flag it for AI classification rather than guess.
+  return { category: queriedCategory, confidence: "low" };
 }
 
 interface GoogleNearbySearchResponse {
@@ -91,24 +129,28 @@ export const googlePlacesProvider: PlaceProvider = {
     return (data.results ?? [])
       .filter((r) => r.geometry?.location && r.business_status !== "CLOSED_PERMANENTLY")
       .slice(0, limit)
-      .map((r) => ({
-        source: "google" as const,
-        sourceId: r.place_id,
-        name: r.name,
-        category: categories[0],
-        address: r.vicinity ?? null,
-        location: { lat: r.geometry!.location!.lat, lng: r.geometry!.location!.lng },
-        openingHours: null,
-        isOpenNow: r.opening_hours?.open_now ?? null,
-        closesAt: null,
-        website: null,
-        phone: null,
-        rating: r.rating ?? null,
-        reviewCount: r.user_ratings_total ?? null,
-        priceLevel: r.price_level ?? null,
-        description: null,
-        imageUrl: r.photos?.[0] ? buildPhotoUrl(r.photos[0].photo_reference) : null,
-        wheelchairAccessible: null,
-      }));
+      .map((r) => {
+        const inferred = inferGoogleCategory(r.types, categories, categories[0]);
+        return {
+          source: "google" as const,
+          sourceId: r.place_id,
+          name: r.name,
+          category: inferred.category,
+          categoryConfidence: inferred.confidence,
+          address: r.vicinity ?? null,
+          location: { lat: r.geometry!.location!.lat, lng: r.geometry!.location!.lng },
+          openingHours: null,
+          isOpenNow: r.opening_hours?.open_now ?? null,
+          closesAt: null,
+          website: null,
+          phone: null,
+          rating: r.rating ?? null,
+          reviewCount: r.user_ratings_total ?? null,
+          priceLevel: r.price_level ?? null,
+          description: null,
+          imageUrl: r.photos?.[0] ? buildPhotoUrl(r.photos[0].photo_reference) : null,
+          wheelchairAccessible: null,
+        };
+      });
   },
 };

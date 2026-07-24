@@ -9,6 +9,7 @@ function place(overrides: Partial<NormalizedPlace> = {}): NormalizedPlace {
     sourceId: "1",
     name: "Cafe Central",
     category: "coffee",
+    categoryConfidence: "high",
     address: "123 Main St",
     location: { lat: 52.23, lng: 21.01 },
     openingHours: null,

@@ -13,7 +13,9 @@ export interface NormalizedPlace {
   source: PlaceSource;
   sourceId: string;
   name: string;
-  category: string;
+  category: ActivityCategory;
+  /** "low" means the category was a last-resort guess (no real tag matched anything in our taxonomy) — a candidate for batched AI classification rather than a trustworthy label. */
+  categoryConfidence: "high" | "low";
   address: string | null;
   location: LatLng;
   openingHours: string | null;

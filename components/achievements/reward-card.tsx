@@ -4,11 +4,11 @@ import * as React from "react";
 import { CheckIcon, LockIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { equipReward, type RewardWithStatus } from "@/app/(app)/rewards/actions";
+import { equipReward, type RewardWithStatus } from "@/app/(app)/achievements/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-function RewardSwatch({ reward }: { reward: RewardWithStatus }) {
+export function RewardSwatch({ reward }: { reward: RewardWithStatus }) {
   if (reward.category === "theme" && reward.theme) {
     return <span className="size-8 rounded-full border border-border" style={{ background: reward.theme.swatch }} />;
   }

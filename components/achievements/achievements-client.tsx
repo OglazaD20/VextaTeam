@@ -4,6 +4,7 @@ import * as React from "react";
 
 import type { AchievementsOverview } from "@/app/(app)/achievements/actions";
 import { AchievementCard } from "@/components/achievements/achievement-card";
+import { CollectionSection } from "@/components/achievements/collection-section";
 import { LevelProgressCard } from "@/components/achievements/level-progress-card";
 import { ConfettiBurst } from "@/components/shared/confetti-burst";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ const CATEGORY_ORDER: AchievementCategory[] = [
 ];
 
 export function AchievementsClient({ overview }: { overview: AchievementsOverview }) {
-  const { progress, byCategory, recentUnlocks, newlyUnlocked, confettiEnabled } = overview;
+  const { progress, byCategory, recentUnlocks, newlyUnlocked, confettiEnabled, collection } = overview;
   const newIds = React.useMemo(() => new Set(newlyUnlocked.map((a) => a.id)), [newlyUnlocked]);
   const [fireConfetti] = React.useState(() => confettiEnabled && newlyUnlocked.length > 0);
 
@@ -36,6 +37,11 @@ export function AchievementsClient({ overview }: { overview: AchievementsOvervie
     <div className="flex flex-col gap-6">
       <ConfettiBurst fire={fireConfetti} />
       <LevelProgressCard progress={progress} />
+
+      <div className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Your collection</h2>
+        <CollectionSection collection={collection} />
+      </div>
 
       {recentUnlocks.length > 0 && (
         <div className="flex flex-col gap-2">

@@ -17,11 +17,13 @@ export const geoapifyProvider: PlaceProvider = {
 
     return places.map((place) => {
       const opening = getOpeningStatus(place.openingHours);
+      const inferred = inferActivityCategory(place.category, categories);
       return {
         source: "geoapify",
         sourceId: `${place.name}|${place.location.lat.toFixed(5)}|${place.location.lng.toFixed(5)}`,
         name: place.name,
-        category: inferActivityCategory(place.category, categories),
+        category: inferred.category,
+        categoryConfidence: inferred.confidence,
         address: place.address,
         location: place.location,
         openingHours: place.openingHours,

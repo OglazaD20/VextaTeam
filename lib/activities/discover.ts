@@ -6,6 +6,7 @@ import { shouldMoveOutdoorActivityIndoors } from "@/lib/weather/planner";
 import type { Locale } from "@/lib/i18n/locales";
 import { estimateTravelMinutes, haversineDistanceKm, type LatLng } from "./distance";
 import type { ActivityCategory } from "./category-taxonomy";
+import { classifyLowConfidenceCategories } from "./classify-category";
 import { mergePlaceResults, type MergedPlace } from "./providers/merge-places";
 import { searchAllProviders } from "./providers/search-all";
 import type { PlaceSource } from "./providers/types";
@@ -86,7 +87,6 @@ function rankedCandidates(
   location: LatLng,
   maxDistanceKm: number,
   excludePlaceNames: string[],
-  requestedCategories: ActivityCategory[],
   badOutdoorWeather: boolean,
   smartFilters: DiscoverSmartFilters,
   poolSize: number,
@@ -95,9 +95,11 @@ function rankedCandidates(
   return candidates
     .filter((place) => !excluded.has(place.name.toLowerCase()))
     .map((place) => {
-      const category = requestedCategories.includes(place.category as ActivityCategory)
-        ? (place.category as ActivityCategory)
-        : requestedCategories[0];
+      // place.category is already the best real category we could resolve
+      // (deterministic tag match, or AI-classified when that failed) —
+      // trusting it directly is what stops a bar from being shown as a park
+      // just because "park" happened to be one of the requested buckets.
+      const category = place.category;
       const distanceKm = haversineDistanceKm(location, place.location);
       const travelMode: "walk" | "drive" = distanceKm <= 1.5 ? "walk" : "drive";
       return {
@@ -162,7 +164,7 @@ export async function discoverActivities(
     getHourlyForecast(filters.location).catch((): ForecastPoint[] => []),
   ]);
 
-  const merged = mergePlaceResults(providerResults);
+  const merged = await classifyLowConfidenceCategories(mergePlaceResults(providerResults));
   const badOutdoorWeather = shouldMoveOutdoorActivityIndoors(weather, forecast);
 
   const ranked = rankedCandidates(
@@ -170,7 +172,6 @@ export async function discoverActivities(
     filters.location,
     filters.maxDistanceKm,
     filters.excludePlaceNames ?? [],
-    filters.categories,
     badOutdoorWeather,
     smartFilters,
     poolSize,
