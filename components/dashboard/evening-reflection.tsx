@@ -4,12 +4,8 @@ import * as React from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
+import { CoachInsightCard, type CoachInsight } from "@/components/coach/coach-insight-card";
 import { Button } from "@/components/ui/button";
-
-interface CoachInsight {
-  title: string;
-  detail: string;
-}
 
 interface CoachData {
   headline: string;
@@ -80,16 +76,14 @@ export function EveningReflection() {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <p className="text-sm font-medium">{data.headline}</p>
       {data.insights.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
+        <div className="grid gap-2 sm:grid-cols-2">
           {data.insights.map((insight, index) => (
-            <li key={index} className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{insight.title}</span> {insight.detail}
-            </li>
+            <CoachInsightCard key={index} insight={insight} />
           ))}
-        </ul>
+        </div>
       )}
       <Button size="sm" variant="ghost" onClick={handleGenerate} disabled={isGenerating} className="self-start">
         {isGenerating ? <Loader2Icon className="animate-spin" /> : <SparklesIcon />}

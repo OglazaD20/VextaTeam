@@ -4,11 +4,30 @@ import { AI_MODEL_FAST, getOpenAIClient } from "./client";
 import { languageInstruction } from "./language";
 import type { Locale } from "@/lib/i18n/locales";
 
+export const COACHING_CATEGORIES = [
+  "productivity",
+  "health",
+  "mood",
+  "finance",
+  "goals",
+  "habits",
+  "nutrition",
+  "achievements",
+  "general",
+] as const;
+export type CoachingCategory = (typeof COACHING_CATEGORIES)[number];
+
 const coachingResponseSchema = z.object({
   headline: z.string().max(120),
   insights: z
-    .array(z.object({ title: z.string().max(80), detail: z.string().max(200) }))
-    .max(6),
+    .array(
+      z.object({
+        title: z.string().max(80),
+        detail: z.string().max(200),
+        category: z.enum(COACHING_CATEGORIES),
+      }),
+    )
+    .max(8),
 });
 
 export type CoachingResult = z.infer<typeof coachingResponseSchema>;
@@ -44,9 +63,13 @@ export async function generateCoaching(
           "Wednesday.\" \"You've maintained your reading streak for 22 days.\" If a weather signal is present",
           "(today's conditions and any weather-driven suggestions), you may fold it into one insight — e.g.",
           "suggesting an indoor swap for an outdoor habit if rain is expected — but only when it's genuinely",
-          "relevant to the user's patterns, and never state a forecast detail that isn't in the input. Write",
-          "2-5 insights (fewer if there isn't much signal — never pad with generic advice) and one short",
-          "headline summarizing the overall picture for this period.",
+          "relevant to the user's patterns, and never state a forecast detail that isn't in the input. Tag",
+          `each insight with the single best-fitting category from: ${COACHING_CATEGORIES.join(", ")} — use`,
+          "\"general\" only when nothing else fits. Write 2-8 insights, covering as many of the real signal",
+          "categories present in the input as you genuinely have something specific to say about (fewer if",
+          "there isn't much signal — never pad with generic advice, and never invent a category's insight",
+          "when that category has no real signal in the input), and one short headline summarizing the",
+          "overall picture for this period.",
           languageInstruction(locale),
         ].join(" "),
       },
@@ -68,8 +91,9 @@ export async function generateCoaching(
                 properties: {
                   title: { type: "string" },
                   detail: { type: "string" },
+                  category: { type: "string", enum: COACHING_CATEGORIES },
                 },
-                required: ["title", "detail"],
+                required: ["title", "detail", "category"],
                 additionalProperties: false,
               },
             },

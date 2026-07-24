@@ -4,6 +4,9 @@ import { z } from "zod";
 import { generateCoaching } from "@/lib/ai/generate-coaching";
 import { getCurrentWeather, getHourlyForecast } from "@/lib/activities/weather-client";
 import { computeWeatherSuggestions } from "@/lib/weather/planner";
+import { computeBudgetUsage, computeCashFlow, computeSpendingByCategory } from "@/lib/finance/calculations";
+import { ACHIEVEMENTS } from "@/lib/gamification/achievements";
+import { computeGoalProgressPct } from "@/lib/goals/progress";
 import { getDictionary } from "@/lib/i18n/get-locale";
 import { isNotificationDueForFrequency, isNotificationEnabled } from "@/lib/notifications/preferences";
 import { sendPushToUser } from "@/lib/notifications/push";
@@ -216,6 +219,106 @@ export async function POST(request: Request) {
       { recent: taskRecords, prior: (priorTasks ?? []).map((t) => ({ status: t.status, priority: t.priority, scheduledStart: t.scheduled_start })) },
       { recent: healthRecords, prior: (priorHealth ?? []).map((h) => ({ dateKey: h.logged_for_date, sleepHours: h.sleep_hours, exerciseMinutes: h.exercise_minutes })) },
     );
+
+    // Weekly/monthly reviews additionally cover finance, goals, nutrition,
+    // and achievements — real per-period aggregates only, best-effort so a
+    // failure in any one slice never blocks the rest of the review.
+    const [
+      { data: transactions },
+      { data: budgets },
+      { data: goals },
+      { data: foodLogs },
+      { data: nutritionSettings },
+      { data: unlockedAchievements },
+    ] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("type, amount, category, occurred_at")
+        .eq("user_id", user.id)
+        .gte("occurred_at", periodStart.toISOString())
+        .lte("occurred_at", now.toISOString()),
+      supabase.from("finance_budgets").select("category, monthly_limit").eq("user_id", user.id),
+      supabase.from("goals").select("*").eq("user_id", user.id).eq("status", "active"),
+      supabase
+        .from("food_logs")
+        .select("logged_at, calories")
+        .eq("user_id", user.id)
+        .gte("logged_at", periodStart.toISOString())
+        .lte("logged_at", now.toISOString()),
+      supabase.from("nutrition_settings").select("daily_calorie_goal").eq("user_id", user.id).maybeSingle(),
+      supabase
+        .from("user_achievements")
+        .select("achievement_id, unlocked_at")
+        .eq("user_id", user.id)
+        .gte("unlocked_at", periodStart.toISOString())
+        .lte("unlocked_at", now.toISOString()),
+    ]);
+
+    const { data: milestones } =
+      (goals ?? []).length > 0
+        ? await supabase
+            .from("goal_milestones")
+            .select("goal_id, is_completed")
+            .in(
+              "goal_id",
+              (goals ?? []).map((g) => g.id),
+            )
+        : { data: [] as { goal_id: string; is_completed: boolean }[] };
+
+    const txRecords = (transactions ?? []).map((t) => ({
+      type: t.type,
+      amount: t.amount,
+      category: t.category,
+      occurredAt: t.occurred_at,
+    }));
+    const cashFlow = computeCashFlow(txRecords);
+    const spendingByCategory = computeSpendingByCategory(txRecords);
+    const budgetUsage = computeBudgetUsage(
+      (budgets ?? []).map((b) => ({ category: b.category, monthlyLimit: b.monthly_limit })),
+      spendingByCategory,
+    );
+    signals.finance = {
+      income: cashFlow.income,
+      expenses: cashFlow.expenses,
+      net: cashFlow.net,
+      overBudgetCategories: budgetUsage.filter((b) => b.isOverBudget).map((b) => b.category),
+    };
+
+    const milestonesByGoal = new Map<string, { isCompleted: boolean }[]>();
+    for (const m of milestones ?? []) {
+      if (!milestonesByGoal.has(m.goal_id)) milestonesByGoal.set(m.goal_id, []);
+      milestonesByGoal.get(m.goal_id)!.push({ isCompleted: m.is_completed });
+    }
+    signals.goals = {
+      activeGoals: (goals ?? []).map((g) => ({
+        title: g.title,
+        progressPct: computeGoalProgressPct({
+          targetValue: g.target_value,
+          currentValue: g.current_value,
+          manualProgressPct: g.manual_progress_pct,
+          milestones: milestonesByGoal.get(g.id) ?? [],
+        }),
+      })),
+    };
+
+    const daysInPeriod = Math.max(1, Math.round((now.getTime() - periodStart.getTime()) / 86_400_000));
+    const totalCalories = (foodLogs ?? []).reduce((sum, f) => sum + f.calories, 0);
+    const daysLogged = new Set((foodLogs ?? []).map((f) => dateKeyOf(f.logged_at))).size;
+    signals.nutrition =
+      daysLogged > 0
+        ? {
+            avgCaloriesPerDayLogged: Math.round(totalCalories / daysLogged),
+            calorieGoal: nutritionSettings?.daily_calorie_goal ?? null,
+            daysLogged,
+            daysInPeriod,
+          }
+        : null;
+
+    const achievementTitleById = new Map(ACHIEVEMENTS.map((a) => [a.id, a.title]));
+    const unlockedTitles = (unlockedAchievements ?? [])
+      .map((u) => achievementTitleById.get(u.achievement_id))
+      .filter((title): title is string => Boolean(title));
+    signals.achievements = unlockedTitles.length > 0 ? { unlockedCount: unlockedTitles.length, titles: unlockedTitles } : null;
   }
 
   // Weather only matters for "right now" coaching — best-effort, silently
