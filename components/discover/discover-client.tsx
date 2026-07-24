@@ -1,19 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { CompassIcon, Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react";
+import { ChevronDownIcon, CompassIcon, Loader2Icon, MapPinIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { generateSimilarActivities, saveActivity } from "@/app/(app)/discover/actions";
+import { generateSimilarActivities, parseDiscoverQuery, saveActivity } from "@/app/(app)/discover/actions";
 import { CategorySelector } from "@/components/discover/category-selector";
 import { EventCard } from "@/components/discover/event-card";
 import { InteractiveMap, type MapPoint } from "@/components/discover/interactive-map";
 import { LocationSearchBox } from "@/components/discover/location-search-box";
+import { NaturalLanguageSearch } from "@/components/discover/natural-language-search";
 import { SavedActivitiesList } from "@/components/discover/saved-activities-list";
 import { SmartFiltersPanel, type PreferenceHint } from "@/components/discover/smart-filters-panel";
 import { SuggestionCard } from "@/components/discover/suggestion-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,6 +30,7 @@ import type { LatLng } from "@/lib/activities/distance";
 import type { ActivitySuggestion, DiscoverSmartFilters } from "@/lib/activities/discover";
 import type { ActivityCategory } from "@/lib/activities/geoapify-client";
 import type { EventCandidate } from "@/lib/activities/ticketmaster-client";
+import { cn } from "@/lib/utils";
 import type { Tables } from "@/types/database";
 
 type ResultCountPreset = "5" | "10" | "20" | "50" | "custom";
@@ -57,9 +60,13 @@ export function DiscoverClient({
   const [resultCountPreset, setResultCountPreset] = React.useState<ResultCountPreset>("10");
   const [customResultCount, setCustomResultCount] = React.useState("15");
   const [smartFilters, setSmartFilters] = React.useState<DiscoverSmartFilters>({});
+  const [openOnly, setOpenOnly] = React.useState(false);
   const [preferenceHints, setPreferenceHints] = React.useState<PreferenceHint[]>([]);
   const [minRating, setMinRating] = React.useState("none");
   const [maxTravelMinutes, setMaxTravelMinutes] = React.useState("none");
+  const [intentNote, setIntentNote] = React.useState<string | undefined>(undefined);
+  const [isParsingQuery, setIsParsingQuery] = React.useState(false);
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
 
   const [location, setLocation] = React.useState<LocationState>({ status: "idle" });
   const [isSearching, setIsSearching] = React.useState(false);
@@ -95,7 +102,7 @@ export function DiscoverClient({
     );
   }
 
-  async function handleSearch(overrideLocation?: LatLng) {
+  async function handleSearch(overrideLocation?: LatLng, overrideIntentNote?: string) {
     const searchLocation = overrideLocation ?? (location.status === "ready" ? location : null);
     if (!searchLocation) {
       requestLocation();
@@ -110,12 +117,14 @@ export function DiscoverClient({
     setSearchError(null);
     try {
       const requests: Promise<void>[] = [];
+      const effectiveIntentNote = overrideIntentNote !== undefined ? overrideIntentNote : intentNote;
 
       if (categories.length > 0) {
         const resultCount =
           resultCountPreset === "custom" ? Number(customResultCount) : Number(resultCountPreset);
         const effectiveFilters: DiscoverSmartFilters = {
           ...smartFilters,
+          ...(openOnly ? { openOnly: true } : {}),
           ...(minRating !== "none" ? { minRating: Number(minRating) } : {}),
           ...(maxTravelMinutes !== "none" ? { maxTravelMinutes: Number(maxTravelMinutes) } : {}),
         };
@@ -135,6 +144,7 @@ export function DiscoverClient({
               resultCount,
               smartFilters: effectiveFilters,
               preferenceHints,
+              ...(effectiveIntentNote ? { intentNote: effectiveIntentNote } : {}),
             }),
           })
             .then((r) => r.json())
@@ -168,6 +178,22 @@ export function DiscoverClient({
       setSearchError("Couldn't reach the activity discovery service");
     } finally {
       setIsSearching(false);
+    }
+  }
+
+  async function handleNaturalLanguageSearch(query: string) {
+    setIsParsingQuery(true);
+    try {
+      const parsed = await parseDiscoverQuery(query);
+      if (parsed.categories.length > 0) setCategories(parsed.categories);
+      if (parsed.budget) setBudget(parsed.budget);
+      if (parsed.openOnly) setOpenOnly(true);
+      if (parsed.minRating) setMinRating(String(parsed.minRating));
+      if (parsed.availableMinutes) setAvailableMinutes(String(parsed.availableMinutes));
+      setIntentNote(query);
+      await handleSearch(undefined, query);
+    } finally {
+      setIsParsingQuery(false);
     }
   }
 
@@ -262,6 +288,8 @@ export function DiscoverClient({
 
       <TabsContent value="discover" className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+          <NaturalLanguageSearch onSearch={handleNaturalLanguageSearch} isParsing={isParsingQuery} />
+
           <div className="flex flex-col gap-1.5">
             <Label>What are you in the mood for?</Label>
             <CategorySelector
@@ -275,7 +303,7 @@ export function DiscoverClient({
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="maxDistanceKm">Max distance (km)</Label>
+              <Label htmlFor="maxDistanceKm">Distance (km)</Label>
               <Input
                 id="maxDistanceKm"
                 type="number"
@@ -283,17 +311,6 @@ export function DiscoverClient({
                 step="0.5"
                 value={maxDistanceKm}
                 onChange={(e) => setMaxDistanceKm(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="availableMinutes">Time available (min)</Label>
-              <Input
-                id="availableMinutes"
-                type="number"
-                min={10}
-                step="10"
-                value={availableMinutes}
-                onChange={(e) => setAvailableMinutes(e.target.value)}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -311,79 +328,36 @@ export function DiscoverClient({
               </Select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="indoorOutdoor">Setting</Label>
-              <Select value={indoorOutdoor} onValueChange={setIndoorOutdoor}>
-                <SelectTrigger id="indoorOutdoor">
+              <Label htmlFor="minRating">Rating</Label>
+              <Select value={minRating} onValueChange={setMinRating}>
+                <SelectTrigger id="minRating">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
-                  <SelectItem value="indoor">Indoor</SelectItem>
-                  <SelectItem value="outdoor">Outdoor</SelectItem>
+                  <SelectItem value="none">Any</SelectItem>
+                  <SelectItem value="3">3.0+</SelectItem>
+                  <SelectItem value="4">4.0+</SelectItem>
+                  <SelectItem value="4.5">4.5+</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <div className="flex flex-col gap-1.5 sm:w-48">
-              <Label htmlFor="social">Company</Label>
-              <Select value={social} onValueChange={setSocial}>
-                <SelectTrigger id="social">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Either</SelectItem>
-                  <SelectItem value="solo">Solo</SelectItem>
-                  <SelectItem value="group">With others</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5 sm:w-40">
-              <Label htmlFor="resultCount">Number of results</Label>
-              <Select
-                value={resultCountPreset}
-                onValueChange={(v) => setResultCountPreset(v as ResultCountPreset)}
+            <div className="flex flex-col justify-end gap-1.5">
+              <Label htmlFor="openOnly">Availability</Label>
+              <button
+                id="openOnly"
+                type="button"
+                aria-pressed={openOnly}
+                onClick={() => setOpenOnly((v) => !v)}
+                className={cn(
+                  "flex h-9 items-center justify-center rounded-md border text-sm font-medium transition-colors",
+                  openOnly
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-input bg-transparent hover:bg-accent",
+                )}
               >
-                <SelectTrigger id="resultCount">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5 places</SelectItem>
-                  <SelectItem value="10">10 places</SelectItem>
-                  <SelectItem value="20">20 places</SelectItem>
-                  <SelectItem value="50">50 places</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
+                Open now
+              </button>
             </div>
-            {resultCountPreset === "custom" && (
-              <div className="flex flex-col gap-1.5 sm:w-28">
-                <Label htmlFor="customResultCount">Custom count</Label>
-                <Input
-                  id="customResultCount"
-                  type="number"
-                  min={3}
-                  max={50}
-                  value={customResultCount}
-                  onChange={(e) => setCustomResultCount(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>Smart filters</Label>
-            <SmartFiltersPanel
-              filters={smartFilters}
-              onChange={setSmartFilters}
-              preferenceHints={preferenceHints}
-              onPreferenceHintsChange={setPreferenceHints}
-              minRating={minRating}
-              onMinRatingChange={setMinRating}
-              maxTravelMinutes={maxTravelMinutes}
-              onMaxTravelMinutesChange={setMaxTravelMinutes}
-            />
           </div>
 
           {location.status === "error" && (
@@ -407,6 +381,102 @@ export function DiscoverClient({
               </div>
             )}
           </div>
+
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1 self-start text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDownIcon className={cn("size-3.5 transition-transform", advancedOpen && "rotate-180")} />
+                Advanced filters
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="flex flex-col gap-4 pt-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="availableMinutes">Time available (min)</Label>
+                  <Input
+                    id="availableMinutes"
+                    type="number"
+                    min={10}
+                    step="10"
+                    value={availableMinutes}
+                    onChange={(e) => setAvailableMinutes(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="indoorOutdoor">Setting</Label>
+                  <Select value={indoorOutdoor} onValueChange={setIndoorOutdoor}>
+                    <SelectTrigger id="indoorOutdoor">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any</SelectItem>
+                      <SelectItem value="indoor">Indoor</SelectItem>
+                      <SelectItem value="outdoor">Outdoor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="social">Company</Label>
+                  <Select value={social} onValueChange={setSocial}>
+                    <SelectTrigger id="social">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Either</SelectItem>
+                      <SelectItem value="solo">Solo</SelectItem>
+                      <SelectItem value="group">With others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="resultCount">Number of results</Label>
+                  <Select
+                    value={resultCountPreset}
+                    onValueChange={(v) => setResultCountPreset(v as ResultCountPreset)}
+                  >
+                    <SelectTrigger id="resultCount">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 places</SelectItem>
+                      <SelectItem value="10">10 places</SelectItem>
+                      <SelectItem value="20">20 places</SelectItem>
+                      <SelectItem value="50">50 places</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {resultCountPreset === "custom" && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="customResultCount">Custom count</Label>
+                    <Input
+                      id="customResultCount"
+                      type="number"
+                      min={3}
+                      max={50}
+                      value={customResultCount}
+                      onChange={(e) => setCustomResultCount(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>More filters</Label>
+                <SmartFiltersPanel
+                  filters={smartFilters}
+                  onChange={setSmartFilters}
+                  preferenceHints={preferenceHints}
+                  onPreferenceHintsChange={setPreferenceHints}
+                  maxTravelMinutes={maxTravelMinutes}
+                  onMaxTravelMinutesChange={setMaxTravelMinutes}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {searchError && <p className="text-sm text-destructive">{searchError}</p>}

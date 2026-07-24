@@ -22,7 +22,6 @@ interface ToggleDef {
 }
 
 const TOGGLES: ToggleDef[] = [
-  { key: "openOnly", label: "Open now" },
   { key: "freeOnly", label: "Free" },
   { key: "luxury", label: "Luxury", icon: GemIcon },
   { key: "popular", label: "Popular", icon: FlameIcon },
@@ -72,8 +71,6 @@ export function SmartFiltersPanel({
   onChange,
   preferenceHints,
   onPreferenceHintsChange,
-  minRating,
-  onMinRatingChange,
   maxTravelMinutes,
   onMaxTravelMinutesChange,
 }: {
@@ -81,8 +78,6 @@ export function SmartFiltersPanel({
   onChange: (next: DiscoverSmartFilters) => void;
   preferenceHints: PreferenceHint[];
   onPreferenceHintsChange: (next: PreferenceHint[]) => void;
-  minRating: string;
-  onMinRatingChange: (value: string) => void;
   maxTravelMinutes: string;
   onMaxTravelMinutesChange: (value: string) => void;
 }) {
@@ -119,36 +114,20 @@ export function SmartFiltersPanel({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:w-72">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="minRating">Minimum rating</Label>
-          <Select value={minRating} onValueChange={onMinRatingChange}>
-            <SelectTrigger id="minRating">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Any</SelectItem>
-              <SelectItem value="3">3.0+</SelectItem>
-              <SelectItem value="4">4.0+</SelectItem>
-              <SelectItem value="4.5">4.5+</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="maxTravelMinutes">Max travel time</Label>
-          <Select value={maxTravelMinutes} onValueChange={onMaxTravelMinutesChange}>
-            <SelectTrigger id="maxTravelMinutes">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Any</SelectItem>
-              <SelectItem value="10">10 min</SelectItem>
-              <SelectItem value="20">20 min</SelectItem>
-              <SelectItem value="30">30 min</SelectItem>
-              <SelectItem value="60">60 min</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-col gap-1.5 sm:w-40">
+        <Label htmlFor="maxTravelMinutes">Max travel time</Label>
+        <Select value={maxTravelMinutes} onValueChange={onMaxTravelMinutesChange}>
+          <SelectTrigger id="maxTravelMinutes">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Any</SelectItem>
+            <SelectItem value="10">10 min</SelectItem>
+            <SelectItem value="20">20 min</SelectItem>
+            <SelectItem value="30">30 min</SelectItem>
+            <SelectItem value="60">60 min</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );

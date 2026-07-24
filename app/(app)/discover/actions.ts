@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { discoverActivities, type ActivitySuggestion } from "@/lib/activities/discover";
+import { parseSearchQuery, type ParsedSearchQuery } from "@/lib/activities/parse-search-query";
 import { pushIfGoogleConnected } from "@/lib/calendar/sync";
 import { awardXp } from "@/lib/gamification/award";
 import { deleteMemoryForSource, recordMemory } from "@/lib/memory/upsert";
@@ -219,6 +220,15 @@ export async function getSavedActivities(): Promise<Tables<"saved_activities">[]
     .limit(50);
 
   return data ?? [];
+}
+
+/** Parses a natural-language Discover search box query into filters the UI can apply. */
+export async function parseDiscoverQuery(query: string): Promise<ParsedSearchQuery> {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return { categories: [], budget: null, openOnly: false, minRating: null, availableMinutes: null };
+  }
+  return parseSearchQuery(trimmed);
 }
 
 export interface GenerateSimilarResult {

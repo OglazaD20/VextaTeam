@@ -36,6 +36,8 @@ export interface DiscoverFilters {
   excludePlaceNames?: string[];
   /** When set, biases the AI toward picks with a similar vibe to this place instead of maximizing variety. */
   similarTo?: { placeName: string; pitch: string };
+  /** The user's own free-text search query (e.g. "quiet coffee shop for studying"), passed through verbatim so the AI can factor in real nuance/vibe when picking and phrasing — never a source of invented facts. */
+  intentNote?: string;
 }
 
 export interface ActivitySuggestion {
@@ -213,6 +215,9 @@ export async function discoverActivities(
           "provided list." +
           (filters.similarTo
             ? ` The user specifically liked "${filters.similarTo.placeName}" (${filters.similarTo.pitch}) — favor candidates with a similar vibe over maximizing variety.`
+            : "") +
+          (filters.intentNote
+            ? ` The user's own search, in their own words: "${filters.intentNote}" — use this for genuine vibe/intent (quiet, romantic, good for studying, etc.), judging only from each candidate's real category/name/description; never claim an amenity or fact you weren't given just to match the vibe.`
             : "") +
           (filters.preferenceHints && filters.preferenceHints.length > 0
             ? ` Also favor candidates that genuinely fit: ${filters.preferenceHints

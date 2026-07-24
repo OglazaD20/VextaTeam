@@ -36,6 +36,7 @@ const bodySchema = z.object({
   resultCount: z.number().int().min(3).max(50).optional(),
   smartFilters: smartFiltersSchema.optional(),
   preferenceHints: z.array(z.enum(["familyFriendly", "petFriendly", "romantic"])).max(3).optional(),
+  intentNote: z.string().max(300).optional(),
 });
 
 export async function POST(request: Request) {
