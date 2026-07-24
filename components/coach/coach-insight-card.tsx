@@ -1,15 +1,20 @@
 import { COACHING_CATEGORY_COLOR, COACHING_CATEGORY_ICON } from "@/lib/coach/category-style";
-import type { CoachingCategory } from "@/lib/ai/generate-coaching";
+import { COACHING_CATEGORIES, type CoachingCategory } from "@/lib/ai/generate-coaching";
 
 export interface CoachInsight {
   title: string;
   detail: string;
-  category: CoachingCategory;
+  /** Optional for backward compatibility — insights generated before this field existed are stored without it. */
+  category?: CoachingCategory;
 }
 
 export function CoachInsightCard({ insight }: { insight: CoachInsight }) {
-  const Icon = COACHING_CATEGORY_ICON[insight.category];
-  const color = COACHING_CATEGORY_COLOR[insight.category];
+  const category: CoachingCategory =
+    insight.category && (COACHING_CATEGORIES as readonly string[]).includes(insight.category)
+      ? insight.category
+      : "general";
+  const Icon = COACHING_CATEGORY_ICON[category];
+  const color = COACHING_CATEGORY_COLOR[category];
 
   return (
     <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-3">
