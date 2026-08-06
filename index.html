@@ -144,6 +144,27 @@ nav.tabs button .ic{font-size:17px}
 .school button{color:var(--red);font-size:16px;padding:2px 6px}
 .school-form{display:flex;gap:8px;margin-top:10px}
 .school-form input{flex:1}
+.school-row2{display:flex;align-items:center;gap:8px;margin-top:4px;padding-left:2px}
+.school-row2 label{font-size:10.5px;color:var(--text-faint);white-space:nowrap}
+.school-row2 input[type=date]{font-size:11px;padding:4px 6px}
+
+/* --- profil / countdown / testy fizyczne / mail do trenera --- */
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.profile-grid .full{grid-column:1/-1}
+.profile-grid .field{display:flex;flex-direction:column}
+.profile-grid label{font-size:11px;color:var(--text-faint);margin-bottom:3px}
+
+.countdown-box{display:flex;gap:10px;flex-wrap:wrap}
+.countdown-item{flex:1;min-width:130px;border:1px solid var(--border);border-radius:10px;background:var(--card-2);padding:10px 12px;text-align:center}
+.countdown-item .num{font-family:var(--font-mono);font-size:26px;color:var(--red);font-weight:600;line-height:1}
+.countdown-item .clbl{font-size:11px;color:var(--text-dim);margin-top:4px;line-height:1.3}
+
+.ptest{border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--card-2);margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;font-size:13.5px;align-items:center}
+.ptest .vals{font-family:var(--font-mono);color:var(--red);font-size:12.5px;text-align:right}
+.ptest-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ptest-form button{grid-column:1/-1}
+
+.email-output{width:100%;min-height:230px;font-size:12.5px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5}
 </style>
 </head>
 <body>
@@ -234,6 +255,30 @@ nav.tabs button .ic{font-size:17px}
   <!-- ====================== DROGA DO D1 ====================== -->
   <section id="page-d1" class="hidden">
     <section class="card">
+      <h2>Profil zawodnika <span class="tag">do maili i CV</span></h2>
+      <p class="small" style="margin-bottom:10px">Wypełnij raz — dane zasilają generator maila do trenera i podsumowanie poniżej.</p>
+      <div class="profile-grid">
+        <div class="field"><label>Imię i nazwisko</label><input type="text" id="pName" placeholder="Jan Kowalski"></div>
+        <div class="field"><label>Rocznik (rok ur.)</label><input type="text" id="pBirthYear" placeholder="2010"></div>
+        <div class="field"><label>Pozycja</label><input type="text" id="pPosition" placeholder="Lewy obrońca"></div>
+        <div class="field"><label>Noga</label>
+          <select id="pFoot"><option value="lewa">lewa</option><option value="prawa">prawa</option><option value="obunożny">obunożny</option></select>
+        </div>
+        <div class="field"><label>Wzrost (cm)</label><input type="text" id="pHeight" placeholder="185"></div>
+        <div class="field"><label>Waga (kg)</label><input type="text" id="pWeight" placeholder="78"></div>
+        <div class="field full"><label>Klub</label><input type="text" id="pClub" placeholder="nazwa klubu"></div>
+        <div class="field full"><label>Link do highlight reel (wideo)</label><input type="text" id="pVideoUrl" placeholder="https://..."></div>
+        <div class="field full"><label>Email kontaktowy</label><input type="text" id="pEmail" placeholder="twoj@email.com"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Najbliższe okno NCAA <span class="tag">countdown</span></h2>
+      <p class="small" style="margin-bottom:10px">Formalne terminy, w których zmieniają się zasady kontaktu z trenerami D1.</p>
+      <div class="countdown-box" id="countdownBox"></div>
+    </section>
+
+    <section class="card">
       <h2>Droga do NCAA D1 <span class="tag">plan rekrutacyjny</span></h2>
       <p class="small" style="line-height:1.6;margin-bottom:6px">
         Konkretny, etapowy plan dla lewego obrońcy z Polski celującego w grę NCAA Division 1
@@ -257,6 +302,31 @@ nav.tabs button .ic{font-size:17px}
         <input type="text" id="schoolName" placeholder="nazwa uczelni / programu">
         <button class="btn primary" id="btnAddSchool">+ dodaj</button>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>Testy fizyczne <span class="tag" id="ptestCount">0</span></h2>
+      <p class="small" style="margin-bottom:8px">Trenerzy D1 pytają o konkretne liczby — sprint, wyskok, waga. Śledź je w czasie.</p>
+      <div id="ptestList"></div>
+      <div class="ptest-form">
+        <input type="date" id="ptDate">
+        <input type="text" id="ptSprint30" placeholder="sprint 30m (s), np. 4.10">
+        <input type="text" id="ptJump" placeholder="wyskok pionowy (cm)">
+        <input type="text" id="ptWeight" placeholder="waga (kg)">
+        <button class="btn primary" id="btnAddPtest">+ dodaj pomiar</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Generator maila do trenera <span class="tag">EN</span></h2>
+      <p class="small" style="margin-bottom:8px">Trenerzy D1 czytają po angielsku — wybierz uczelnię z listy (albo wpisz własną), uzupełnij profil wyżej i wygeneruj gotowy szkic.</p>
+      <div class="school-form" style="margin-top:0">
+        <input type="text" id="emailSchool" placeholder="nazwa uczelni (albo wybierz poniżej)">
+        <button class="btn primary" id="btnGenEmail">generuj</button>
+      </div>
+      <select id="emailSchoolPick" style="width:100%;margin-top:8px"></select>
+      <textarea id="emailOutput" class="email-output" style="margin-top:10px" placeholder="Tu pojawi się gotowy szkic maila…" readonly></textarea>
+      <div class="btnrow"><button class="btn" id="btnCopyEmail">📋 kopiuj do schowka</button></div>
     </section>
   </section>
 
@@ -432,8 +502,13 @@ function defaultState(){
     streak: 0,
     lastCheckDate: null,
     d1Tasks: defaultD1Tasks(),   // { "faza1_0": bool, ... }
-    targetSchools: [],            // { name, status }
-    lastShownBumpedWeek: null     // do wyświetlenia bannera sukcesu tylko raz
+    targetSchools: [],            // { name, status, lastContact }
+    lastShownBumpedWeek: null,    // do wyświetlenia bannera sukcesu tylko raz
+    profile: {                    // dane do maili i CV
+      name:"", birthYear:"", position:"Lewy obrońca", foot:"lewa",
+      height:"", weight:"", club:"", videoUrl:"", email:""
+    },
+    physicalTests: []             // { date, sprint30, jump, weight }
   };
 }
 
@@ -611,6 +686,17 @@ function smartTip(){
   const d1Done = Object.values(state.d1Tasks).filter(Boolean).length;
   if(d1Done===0){
     return `Zero odhaczonych punktów w planie "Droga do D1". Zacznij od pierwszego kroku Fazy 1 — rejestracji w NCAA Eligibility Center.`;
+  }
+
+  // 7. uczelnia czeka na follow-up (mail wysłany >14 dni temu, brak nowego kontaktu)
+  const stale = state.targetSchools.find(s=>{
+    if(s.status!=="mail wysłany" || !s.lastContact) return false;
+    const days = Math.floor((today-new Date(s.lastContact))/86400000);
+    return days>14;
+  });
+  if(stale){
+    const days = Math.floor((today-new Date(stale.lastContact))/86400000);
+    return `Minęło ${days} dni od maila do ${stale.name}, a status wciąż "mail wysłany" — czas na krótki follow-up.`;
   }
 
   // fallback: losowy cytat jako "tip"
@@ -793,12 +879,18 @@ function renderSchools(){
     return;
   }
   box.innerHTML = state.targetSchools.map((s,idx)=>`
-    <div class="school">
-      <input type="text" value="${(s.name||"").replace(/"/g,'&quot;')}" data-nameidx="${idx}">
-      <select data-statusidx="${idx}">
-        ${statuses.map(st=>`<option value="${st}" ${s.status===st?"selected":""}>${st}</option>`).join("")}
-      </select>
-      <button data-delidx="${idx}">✕</button>
+    <div>
+      <div class="school">
+        <input type="text" value="${(s.name||"").replace(/"/g,'&quot;')}" data-nameidx="${idx}">
+        <select data-statusidx="${idx}">
+          ${statuses.map(st=>`<option value="${st}" ${s.status===st?"selected":""}>${st}</option>`).join("")}
+        </select>
+        <button data-delidx="${idx}">✕</button>
+      </div>
+      <div class="school-row2">
+        <label>ostatni kontakt:</label>
+        <input type="date" value="${s.lastContact||""}" data-contactidx="${idx}">
+      </div>
     </div>
   `).join("");
   box.querySelectorAll("[data-nameidx]").forEach(inp=>{
@@ -807,19 +899,149 @@ function renderSchools(){
   box.querySelectorAll("[data-statusidx]").forEach(sel=>{
     sel.addEventListener("change", ()=>{ state.targetSchools[+sel.dataset.statusidx].status = sel.value; saveState(); });
   });
+  box.querySelectorAll("[data-contactidx]").forEach(inp=>{
+    inp.addEventListener("change", ()=>{ state.targetSchools[+inp.dataset.contactidx].lastContact = inp.value; saveState(); renderTip(); });
+  });
   box.querySelectorAll("[data-delidx]").forEach(btn=>{
     btn.addEventListener("click", ()=>{ state.targetSchools.splice(+btn.dataset.delidx,1); saveState(); renderSchools(); });
   });
+
+  // lista wyboru w generatorze maila
+  const pick = document.getElementById("emailSchoolPick");
+  if(pick){
+    pick.innerHTML = `<option value="">— albo wybierz z Twojej listy uczelni —</option>` +
+      state.targetSchools.map(s=>`<option value="${(s.name||"").replace(/"/g,'&quot;')}">${s.name}</option>`).join("");
+  }
 }
 
 document.getElementById("btnAddSchool").addEventListener("click", ()=>{
   const inp = document.getElementById("schoolName");
   const name = inp.value.trim();
   if(!name) return;
-  state.targetSchools.push({name, status:"do sprawdzenia"});
+  state.targetSchools.push({name, status:"do sprawdzenia", lastContact:""});
   inp.value = "";
   saveState();
   renderSchools();
+});
+
+// ---------- profil zawodnika ----------
+const PROFILE_FIELDS = [
+  ["pName","name"], ["pBirthYear","birthYear"], ["pPosition","position"], ["pFoot","foot"],
+  ["pHeight","height"], ["pWeight","weight"], ["pClub","club"], ["pVideoUrl","videoUrl"], ["pEmail","email"]
+];
+function renderProfile(){
+  PROFILE_FIELDS.forEach(([id,key])=>{
+    const el = document.getElementById(id);
+    if(el && document.activeElement!==el) el.value = state.profile[key] || (key==="position"?"Lewy obrońca":key==="foot"?"lewa":"");
+  });
+}
+PROFILE_FIELDS.forEach(([id,key])=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener("change", ()=>{ state.profile[key] = el.value; saveState(); });
+});
+
+// ---------- countdown do okien NCAA ----------
+function nextDate(month, day){ // month: 1-12
+  const now = new Date();
+  let d = new Date(now.getFullYear(), month-1, day);
+  if(d < now) d = new Date(now.getFullYear()+1, month-1, day);
+  return d;
+}
+function daysUntil(d){ return Math.ceil((d - new Date())/86400000); }
+function renderCountdown(){
+  const items = [
+    { d: nextDate(6,15), lbl:"15 czerwca — trenerzy D1 mogą zacząć oficjalnie kontaktować się z zawodnikami po 2 klasie (dzwonić, pisać)." },
+    { d: nextDate(8,1),  lbl:"1 sierpnia — otwarcie oficjalnych wizyt na kampusie dla uczniów po 3 klasie." },
+    { d: nextDate(11,13),lbl:"wczesny okres podpisania National Letter of Intent (orientacyjnie połowa listopada)." }
+  ];
+  document.getElementById("countdownBox").innerHTML = items.map(it=>`
+    <div class="countdown-item">
+      <div class="num">${daysUntil(it.d)}</div>
+      <div class="clbl">dni — ${it.lbl}</div>
+    </div>
+  `).join("");
+}
+
+// ---------- testy fizyczne ----------
+function renderPhysicalTests(){
+  document.getElementById("ptestCount").textContent = state.physicalTests.length;
+  const list = document.getElementById("ptestList");
+  if(state.physicalTests.length===0){
+    list.innerHTML = `<p class="small" style="margin-bottom:6px">Brak pomiarów — dodaj pierwszy poniżej.</p>`;
+    return;
+  }
+  const sorted = state.physicalTests.slice().sort((a,b)=> new Date(b.date)-new Date(a.date));
+  list.innerHTML = sorted.map(t=>`
+    <div class="ptest">
+      <span>${t.date}</span>
+      <span class="vals">${t.sprint30? "30m: "+t.sprint30+"s  ":""}${t.jump? "wyskok: "+t.jump+"cm  ":""}${t.weight? "waga: "+t.weight+"kg":""}</span>
+    </div>
+  `).join("");
+}
+document.getElementById("btnAddPtest").addEventListener("click", ()=>{
+  const date = document.getElementById("ptDate").value || todayKey();
+  const sprint30 = document.getElementById("ptSprint30").value.trim();
+  const jump = document.getElementById("ptJump").value.trim();
+  const weight = document.getElementById("ptWeight").value.trim();
+  if(!sprint30 && !jump && !weight){ alert("Podaj chociaż jeden wynik pomiaru."); return; }
+  state.physicalTests.push({date, sprint30, jump, weight});
+  saveState();
+  document.getElementById("ptSprint30").value="";
+  document.getElementById("ptJump").value="";
+  document.getElementById("ptWeight").value="";
+  renderPhysicalTests();
+});
+
+// ---------- generator maila do trenera (EN) ----------
+function buildCoachEmail(schoolName){
+  const p = state.profile;
+  const school = schoolName || "[nazwa uczelni]";
+  const name = p.name || "[Twoje imię i nazwisko]";
+  const position = p.position || "left-back";
+  const foot = p.foot==="prawa" ? "right" : p.foot==="obunożny" ? "both-footed" : "left";
+  const birthYear = p.birthYear || "[rocznik]";
+  const height = p.height || "[wzrost]";
+  const weight = p.weight || "[waga]";
+  const club = p.club || "[klub]";
+  const video = p.videoUrl || "[link do highlight reel]";
+  const email = p.email || "[Twój email]";
+
+  return `Subject: ${name} — ${position} — Class of ${birthYear? (+birthYear+18) : "[year]"} — Interest in ${school} Men's Soccer
+
+Dear Coach,
+
+My name is ${name}, and I am a ${foot}-footed ${position} currently playing for ${club} in Poland. I am very interested in learning more about the ${school} men's soccer program and would love the opportunity to be considered.
+
+Quick profile:
+- Position: ${position} (${foot}-footed)
+- Height / Weight: ${height} cm / ${weight} kg
+- Club: ${club}
+- Highlight video: ${video}
+
+I would really appreciate the chance to speak with you about the program and to share further game footage or statistics if that would be helpful. Thank you very much for your time and consideration.
+
+Best regards,
+${name}
+${email}`;
+}
+document.getElementById("btnGenEmail").addEventListener("click", ()=>{
+  const typed = document.getElementById("emailSchool").value.trim();
+  const picked = document.getElementById("emailSchoolPick").value;
+  const schoolName = typed || picked;
+  document.getElementById("emailOutput").value = buildCoachEmail(schoolName);
+});
+document.getElementById("emailSchoolPick").addEventListener("change", (e)=>{
+  if(e.target.value) document.getElementById("emailSchool").value = e.target.value;
+});
+document.getElementById("btnCopyEmail").addEventListener("click", async ()=>{
+  const txt = document.getElementById("emailOutput").value;
+  if(!txt){ alert("Najpierw wygeneruj mail."); return; }
+  try{
+    await navigator.clipboard.writeText(txt);
+    alert("Skopiowano do schowka.");
+  }catch(e){
+    alert("Nie udało się skopiować automatycznie — zaznacz tekst ręcznie.");
+  }
 });
 
 function renderSuccessBanner(bumpResult){
@@ -849,6 +1071,9 @@ function renderAll(){
   renderMatches();
   renderD1();
   renderSchools();
+  renderProfile();
+  renderCountdown();
+  renderPhysicalTests();
   renderTip();
   document.getElementById("quotesEditor").value = state.quotes.map(q=>`${q[0]} | ${q[1]||""}`).join("\n");
 }
