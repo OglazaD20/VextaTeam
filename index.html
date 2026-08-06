@@ -37,8 +37,12 @@
 html,body{background:var(--bg);color:var(--text);-webkit-text-size-adjust:100%}
 body{font-family:var(--font-body);overscroll-behavior-y:none;padding-bottom:76px}
 button{background:none;border:none;color:inherit;font:inherit;cursor:pointer}
-input,textarea,select{font:inherit;color:inherit;background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;outline:none}
+input,textarea,select{font-family:inherit;font-size:16px;color:inherit;background:var(--card-2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;outline:none;width:100%}
+/* font-size:16px na inputach/textareach jest celowe — poniżej 16px Safari na iOS
+   automatycznie przybliża ekran po dotknięciu pola, co na telefonie wygląda
+   jak "formularz się psuje". Selecty i inne kontrolki tego problemu nie mają. */
 input:focus,textarea:focus,select:focus{border-color:var(--red)}
+button{-webkit-tap-highlight-color:transparent}
 h1,h2,h3{font-family:var(--font-display);font-weight:600;letter-spacing:.01em}
 .mono{font-family:var(--font-mono)}
 .wrap{max-width:640px;margin:0 auto;padding:0 16px}
@@ -104,7 +108,7 @@ section.card{background:var(--card);border:1px solid var(--border);border-radius
 .btn.primary{background:var(--red);color:#fff;border-color:var(--red)}
 .btn:active{transform:scale(.96)}
 
-textarea#quotesEditor{width:100%;min-height:120px;font-size:13px}
+textarea#quotesEditor{width:100%;min-height:120px}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);display:flex;padding:0 8px calc(0px + env(safe-area-inset-bottom));z-index:10}
 nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px 10px;font-size:10.5px;color:var(--text-faint);border-radius:0;border-top:2px solid transparent;letter-spacing:.02em;text-transform:uppercase;font-family:var(--font-display);font-weight:600}
@@ -146,14 +150,14 @@ nav.tabs button .ic{font-size:17px}
 .phase .ptask.done label{color:var(--text-faint);text-decoration:line-through}
 
 .school{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--card-2);margin-bottom:6px}
-.school input[type=text]{background:transparent;border:none;padding:2px 0;font-size:14px}
-.school select{font-size:12px;padding:5px 6px}
+.school input[type=text]{background:transparent;border:none;padding:2px 0;width:100%}
+.school select{font-size:12.5px;padding:5px 6px;width:auto}
 .school button{color:var(--red);font-size:16px;padding:2px 6px}
 .school-form{display:flex;gap:8px;margin-top:10px}
 .school-form input{flex:1}
 .school-row2{display:flex;align-items:center;gap:8px;margin-top:4px;padding-left:2px}
-.school-row2 label{font-size:10.5px;color:var(--text-faint);white-space:nowrap}
-.school-row2 input[type=date]{font-size:11px;padding:4px 6px}
+.school-row2 label{font-size:10.5px;color:var(--text-faint);white-space:nowrap;flex:none}
+.school-row2 input[type=date]{font-size:12.5px;padding:4px 6px;width:auto;flex:1}
 
 /* --- profil / countdown / testy fizyczne / mail do trenera --- */
 .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -171,7 +175,7 @@ nav.tabs button .ic{font-size:17px}
 .ptest-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .ptest-form button{grid-column:1/-1}
 
-.email-output{width:100%;min-height:230px;font-size:12.5px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5}
+.email-output{width:100%;min-height:230px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5}
 
 /* --- boisko z pozycją zawodnika --- */
 .pitch-wrap{display:flex;justify-content:center;background:#0c1610;border:1px solid var(--border);border-radius:8px;padding:10px 0}
@@ -188,6 +192,23 @@ nav.tabs button .ic{font-size:17px}
 }
 .pitch-caption{text-align:center;margin-top:10px;font-size:13px;color:var(--text-dim)}
 .pitch-caption b{color:var(--text);font-family:var(--font-display);text-transform:uppercase;letter-spacing:.03em}
+
+/* --- dopasowanie pod wąskie ekrany telefonów --- */
+@media (max-width:480px){
+  .wrap{padding:0 12px}
+  section.card{padding:12px}
+  .profile-grid{grid-template-columns:1fr}
+  .match-form{grid-template-columns:1fr}
+  .ptest-form{grid-template-columns:1fr}
+  .btn{padding:11px 12px;min-height:40px}
+  .match-form button,.ptest-form button,.match-form textarea{grid-column:auto}
+  .school{grid-template-columns:1fr auto;grid-template-areas:"name name" "status del"}
+  .school input[type=text]{grid-area:name}
+  .school select{grid-area:status;width:100%}
+  .school button{grid-area:del}
+  nav.tabs button{font-size:9.5px;padding:8px 1px 9px}
+  nav.tabs button .ic{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -328,6 +349,7 @@ nav.tabs button .ic{font-size:17px}
         <div class="field full"><label>Link do highlight reel (wideo)</label><input type="text" id="pVideoUrl" placeholder="https://..."></div>
         <div class="field full"><label>Email kontaktowy</label><input type="text" id="pEmail" placeholder="twoj@email.com"></div>
       </div>
+      <div class="btnrow"><button class="btn primary" id="btnSaveProfile">💾 zapisz profil</button></div>
     </section>
 
     <section class="card">
@@ -1004,9 +1026,23 @@ function renderProfile(){
     if(el && document.activeElement!==el) el.value = state.profile[key] || (key==="position"?"Lewy obrońca":key==="foot"?"lewa":"");
   });
 }
+function saveProfileField(id, key){
+  const el = document.getElementById(id);
+  if(!el) return;
+  state.profile[key] = el.value;
+  saveState();
+  if(key==="position") renderPitch();
+}
 PROFILE_FIELDS.forEach(([id,key])=>{
   const el = document.getElementById(id);
-  if(el) el.addEventListener("change", ()=>{ state.profile[key] = el.value; saveState(); if(key==="position") renderPitch(); });
+  if(!el) return;
+  // "input" łapie każdą zmianę od razu (działa niezawodnie też na telefonach),
+  // "change"/"blur" to dodatkowa siatka bezpieczeństwa.
+  ["input","change","blur"].forEach(evt=> el.addEventListener(evt, ()=> saveProfileField(id,key)));
+});
+document.getElementById("btnSaveProfile").addEventListener("click", ()=>{
+  PROFILE_FIELDS.forEach(([id,key])=> saveProfileField(id,key));
+  showToast("Zapisano profil.");
 });
 
 // ---------- boisko z pozycją zawodnika ----------
