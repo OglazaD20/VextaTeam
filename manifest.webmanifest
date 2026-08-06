@@ -1,0 +1,14 @@
+{
+  "name": "LB System",
+  "short_name": "LB System",
+  "description": "Codzienny system rozwoju zawodnika",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B120E",
+  "theme_color": "#0B120E",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
