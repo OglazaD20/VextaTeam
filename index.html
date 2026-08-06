@@ -114,6 +114,36 @@ nav.tabs button .ic{font-size:17px}
 .editrow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
 .editrow input{flex:1}
 .editrow button{color:var(--red);font-size:18px;line-height:1;padding:2px 6px}
+
+/* --- baner sukcesu tygodnia --- */
+.success-banner{display:flex;gap:10px;align-items:center;background:linear-gradient(90deg,rgba(225,68,52,.18),rgba(76,175,110,.12));border:1px solid var(--green);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.success-banner .ico{font-size:22px}
+.success-banner p{font-size:13.5px;line-height:1.4}
+.success-banner b{color:var(--green)}
+.success-banner button{margin-left:auto;color:var(--text-faint);font-size:18px;flex:none}
+
+/* --- droga do D1 --- */
+.d1-progress{margin-bottom:4px}
+.d1-progress .bar{height:10px;border-radius:6px;background:var(--card-2);border:1px solid var(--border);overflow:hidden;margin-top:6px}
+.d1-progress .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--red-dim),var(--red))}
+.phase{border:1px solid var(--border);border-radius:12px;background:var(--card-2);margin-bottom:10px;overflow:hidden}
+.phase .phead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
+.phase .phead .ptitle{font-family:var(--font-display);font-size:17px;font-weight:600}
+.phase .phead .psub{font-size:11.5px;color:var(--text-faint);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.03em}
+.phase .pbody{padding:0 14px 14px;display:none}
+.phase.open .pbody{display:block}
+.phase .pdesc{font-size:13.5px;color:var(--text-dim);line-height:1.55;margin-bottom:10px}
+.phase .ptasks{display:flex;flex-direction:column;gap:6px}
+.phase .ptask{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;line-height:1.4}
+.phase .ptask input{width:18px;height:18px;flex:none;accent-color:var(--red);margin-top:2px}
+.phase .ptask.done label{color:var(--text-faint);text-decoration:line-through}
+
+.school{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--card-2);margin-bottom:6px}
+.school input[type=text]{background:transparent;border:none;padding:2px 0;font-size:14px}
+.school select{font-size:12px;padding:5px 6px}
+.school button{color:var(--red);font-size:16px;padding:2px 6px}
+.school-form{display:flex;gap:8px;margin-top:10px}
+.school-form input{flex:1}
 </style>
 </head>
 <body>
@@ -130,6 +160,8 @@ nav.tabs button .ic{font-size:17px}
 
   <!-- ====================== DZIŚ ====================== -->
   <section id="page-dzis">
+    <div id="successBanner" class="hidden"></div>
+
     <section class="card">
       <h2>Cytat dnia <span class="tag">motywacja</span></h2>
       <div class="quote-box">
@@ -199,6 +231,35 @@ nav.tabs button .ic{font-size:17px}
     </section>
   </section>
 
+  <!-- ====================== DROGA DO D1 ====================== -->
+  <section id="page-d1" class="hidden">
+    <section class="card">
+      <h2>Droga do NCAA D1 <span class="tag">plan rekrutacyjny</span></h2>
+      <p class="small" style="line-height:1.6;margin-bottom:6px">
+        Konkretny, etapowy plan dla lewego obrońcy z Polski celującego w grę NCAA Division 1
+        w USA. Odhaczaj punkty w miarę realizacji — pasek postępu liczy się z całego planu.
+      </p>
+      <div class="d1-progress">
+        <div class="lbl" style="display:flex;justify-content:space-between;font-size:13px">
+          <span>Postęp planu</span><b class="mono" id="d1ProgressLabel">0%</b>
+        </div>
+        <div class="bar"><span id="d1ProgressBar" style="width:0%"></span></div>
+      </div>
+    </section>
+
+    <div id="phaseList"></div>
+
+    <section class="card">
+      <h2>Lista celowanych uczelni <span class="tag" id="schoolCount">0</span></h2>
+      <p class="small" style="margin-bottom:8px">Dodawaj programy D1, do których chcesz trafić, i śledź status kontaktu.</p>
+      <div id="schoolList"></div>
+      <div class="school-form">
+        <input type="text" id="schoolName" placeholder="nazwa uczelni / programu">
+        <button class="btn primary" id="btnAddSchool">+ dodaj</button>
+      </div>
+    </section>
+  </section>
+
   <!-- ====================== USTAWIENIA / BACKUP ====================== -->
   <section id="page-ustawienia" class="hidden">
     <section class="card">
@@ -234,6 +295,7 @@ nav.tabs button .ic{font-size:17px}
   <button data-page="plan"><span class="ic">▤</span>Plan</button>
   <button data-page="staty"><span class="ic">▲</span>Staty</button>
   <button data-page="mecze"><span class="ic">⚽</span>Mecze</button>
+  <button data-page="d1"><span class="ic">🎓</span>D1</button>
   <button data-page="ustawienia"><span class="ic">⚙</span>Więcej</button>
 </nav>
 
@@ -291,6 +353,72 @@ const STAT_KEYS = [
   { key:"mentalnosc",   label:"Mentalność" }
 ];
 
+// 5) PLAN REKRUTACYJNY NCAA D1 — konkretne fazy i zadania.
+// Oparte na realnych zasadach NCAA (Eligibility Center, core courses, okna kontaktowe,
+// wizyty, amatorstwo) dla zawodnika spoza USA. Możesz dopisywać/usuwać zadania niżej.
+const D1_PLAN = [
+  {
+    id:"faza1",
+    title:"Faza 1 — Fundament (teraz, ~16 lat)",
+    sub:"start",
+    desc:"Zanim jakikolwiek trener D1 zacznie Cię realnie rekrutować, musisz mieć fundament: rejestrację w systemie NCAA, poprawny tok nauki i pierwsze materiały wideo. To się robi TERAZ, niezależnie od tego czy ktoś się już do Ciebie odezwał.",
+    tasks:[
+      "Załóż konto (Profile Page) w NCAA Eligibility Center — eligibilitycenter.org — to pierwszy formalny krok, bez tego żadna D1 nie może Cię oficjalnie zrekrutować.",
+      "Sprawdź, czy Twój tok nauki w liceum pokryje 16 tzw. core courses NCAA (j. angielski, matematyka, nauki przyrodnicze, nauki społeczne + dodatkowe) — jeśli nie, dogadaj to ze szkołą już teraz.",
+      "Zacznij przygotowania do TOEFL / IELTS / Duolingo English Test (znajomość angielskiego będzie potrzebna do certyfikacji i rozmów z trenerami).",
+      "Nagraj pierwszy highlight reel (3–5 min): obrona 1v1, gra w powietrzu, wyjścia z piłką, podania, wsparcie ataku ze skrzydła jako lewy obrońca.",
+      "Zbuduj wstępną listę 15–20 uczelni D1 dopasowanych poziomem sportowym i akademickim — nie tylko topowe konferencje.",
+      "Pilnuj statusu amatora — żadnych płatnych kontraktów/transferów, które mogłyby zagrozić statusowi amatorskiemu NCAA."
+    ]
+  },
+  {
+    id:"faza2",
+    title:"Faza 2 — Kontakt i widoczność (16–17 lat)",
+    sub:"od 15 czerwca po 2 klasie",
+    desc:"Od 15 czerwca po drugim roku liceum trenerzy D1 mogą już legalnie do Ciebie pisać i dzwonić. Ale Ty możesz pisać do NICH w każdej chwili, wcześniej — jednostronny kontakt od zawodnika zawsze jest dozwolony i warto go zacząć jak najwcześniej.",
+    tasks:[
+      "Wyślij spersonalizowane maile do trenerów z Twojej listy: highlight reel, dane fizyczne (wzrost/waga, noga), grafik meczów, oceny.",
+      "Zapisz się na ID camps organizowane przez wybrane uczelnie — to główny sposób, żeby trener D1 zobaczył Cię na żywo.",
+      "Jedź na showcase'y / turnieje z udziałem skautów US college (np. eventy United Soccer Coaches, Generation adidas Cup) — kluczowe dla zawodnika grającego w Europie.",
+      "Rozważ platformę rekrutacyjną (np. NCSA, FieldLevel) do dystrybucji swojego profilu do trenerów.",
+      "Kontynuuj pracę nad słabą (prawą) nogą — to pierwsza rzecz, którą sprawdzają trenerzy oceniający lewych obrońców.",
+      "Aktualizuj highlight reel co sezon o najnowsze mecze."
+    ]
+  },
+  {
+    id:"faza3",
+    title:"Faza 3 — Wizyty i zawężanie listy (17–18 lat)",
+    sub:"od 1 sierpnia po 3 klasie",
+    desc:"To etap, w którym relacja z trenerami przechodzi w konkret: wizyty na kampusie i pierwsze rozmowy o ofertach. Lista uczelni powinna się teraz zawężać do tych, które realnie odpowiadają.",
+    tasks:[
+      "Od 1 sierpnia po trzeciej klasie możesz jeździć na oficjalne wizyty (finansowane przez uczelnię, max 5, jedna na szkołę) i nieoficjalne (własny koszt, bez limitu).",
+      "Zawęź listę do 5–8 realnych celów na podstawie faktycznego zainteresowania trenerów.",
+      "Zbierz kontakty i pytania na wizytę: plan sportowy, plan akademicki, stypendium, rola w drużynie.",
+      "Utrzymuj wysokie oceny — spadek w nauce może zablokować certyfikację NCAA nawet przy dużym zainteresowaniu trenera.",
+      "Dopnij wynik testu językowego (TOEFL/IELTS/Duolingo), jeśli jeszcze niezaliczony."
+    ]
+  },
+  {
+    id:"faza4",
+    title:"Faza 4 — Decyzja i podpisanie (18 lat)",
+    sub:"ostatnia klasa liceum",
+    desc:"Finał procesu: formalne oferty, podpisanie listu intencyjnego i ostateczna certyfikacja akademicka.",
+    tasks:[
+      "Wczesny okres podpisania National Letter of Intent (zwykle listopad) lub okres regularny (wiosna) — zależnie od oferty.",
+      "Skompletuj finalną certyfikację w NCAA Eligibility Center: pełne świadectwo ze wszystkimi core courses, wynik testu językowego.",
+      "Potwierdź status amatora po raz ostatni przed podpisaniem.",
+      "Podejmij ostateczną decyzję biorąc pod uwagę: rolę sportową, poziom akademicki, lokalizację, stypendium.",
+      "Zaplanuj przeprowadzkę: wiza F-1/wymogi sportowe, ubezpieczenie, orientację przed rokiem akademickim."
+    ]
+  }
+];
+
+function defaultD1Tasks(){
+  const t = {};
+  D1_PLAN.forEach(phase => phase.tasks.forEach((_,i)=>{ t[phase.id+"_"+i] = false; }));
+  return t;
+}
+
 function defaultState(){
   const stats = {};
   STAT_KEYS.forEach(s => stats[s.key] = 30); // start na 30/100
@@ -302,7 +430,10 @@ function defaultState(){
     stats,
     bumpedWeeks: [],     // lista tygodni (YYYY-Www), za które już doliczono staty
     streak: 0,
-    lastCheckDate: null
+    lastCheckDate: null,
+    d1Tasks: defaultD1Tasks(),   // { "faza1_0": bool, ... }
+    targetSchools: [],            // { name, status }
+    lastShownBumpedWeek: null     // do wyświetlenia bannera sukcesu tylko raz
   };
 }
 
@@ -476,6 +607,12 @@ function smartTip(){
     return `${state.streak} dni z rzędu z odhaczonym planem. Dobra seria — nie przerywaj jej dla wygody.`;
   }
 
+  // 6. zerowy postęp w planie D1
+  const d1Done = Object.values(state.d1Tasks).filter(Boolean).length;
+  if(d1Done===0){
+    return `Zero odhaczonych punktów w planie "Droga do D1". Zacznij od pierwszego kroku Fazy 1 — rejestracji w NCAA Eligibility Center.`;
+  }
+
   // fallback: losowy cytat jako "tip"
   const q = state.quotes[Math.floor(Math.random()*state.quotes.length)];
   return q ? `${q[0]}` : "Trzymaj plan, statystyki rosną z każdym udanym tygodniem.";
@@ -600,12 +737,118 @@ function renderMatches(){
   `).join("");
 }
 
+function renderD1(){
+  const totalTasks = D1_PLAN.reduce((n,p)=>n+p.tasks.length,0);
+  const doneTasks = Object.values(state.d1Tasks).filter(Boolean).length;
+  const pct = totalTasks ? Math.round(doneTasks/totalTasks*100) : 0;
+  document.getElementById("d1ProgressLabel").textContent = pct+"%";
+  document.getElementById("d1ProgressBar").style.width = pct+"%";
+
+  const list = document.getElementById("phaseList");
+  const openIds = new Set([...list.querySelectorAll(".phase.open")].map(el=>el.dataset.id));
+  list.innerHTML = D1_PLAN.map(phase=>{
+    const done = phase.tasks.filter((_,i)=>state.d1Tasks[phase.id+"_"+i]).length;
+    return `
+    <div class="phase${openIds.has(phase.id)?" open":""}" data-id="${phase.id}">
+      <div class="phead" data-toggle="${phase.id}">
+        <div><div class="ptitle">${phase.title}</div><div class="psub">${phase.sub} · ${done}/${phase.tasks.length}</div></div>
+        <span class="mono small">${openIds.has(phase.id)?"▲":"▼"}</span>
+      </div>
+      <div class="pbody">
+        <p class="pdesc">${phase.desc}</p>
+        <div class="ptasks">
+          ${phase.tasks.map((t,i)=>{
+            const tid = phase.id+"_"+i;
+            const checked = !!state.d1Tasks[tid];
+            return `<div class="ptask${checked?" done":""}">
+              <input type="checkbox" id="d1_${tid}" data-tid="${tid}" ${checked?"checked":""}>
+              <label for="d1_${tid}">${t}</label>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  list.querySelectorAll("[data-toggle]").forEach(head=>{
+    head.addEventListener("click", ()=>{
+      head.closest(".phase").classList.toggle("open");
+    });
+  });
+  list.querySelectorAll("[data-tid]").forEach(inp=>{
+    inp.addEventListener("change", ()=>{
+      state.d1Tasks[inp.dataset.tid] = inp.checked;
+      saveState();
+      renderD1();
+    });
+  });
+}
+
+function renderSchools(){
+  const box = document.getElementById("schoolList");
+  document.getElementById("schoolCount").textContent = state.targetSchools.length;
+  const statuses = ["do sprawdzenia","mail wysłany","odpowiedź trenera","ID camp / wizyta","oferta"];
+  if(state.targetSchools.length===0){
+    box.innerHTML = `<p class="small" style="margin-bottom:6px">Brak uczelni na liście — dodaj pierwszą poniżej.</p>`;
+    return;
+  }
+  box.innerHTML = state.targetSchools.map((s,idx)=>`
+    <div class="school">
+      <input type="text" value="${(s.name||"").replace(/"/g,'&quot;')}" data-nameidx="${idx}">
+      <select data-statusidx="${idx}">
+        ${statuses.map(st=>`<option value="${st}" ${s.status===st?"selected":""}>${st}</option>`).join("")}
+      </select>
+      <button data-delidx="${idx}">✕</button>
+    </div>
+  `).join("");
+  box.querySelectorAll("[data-nameidx]").forEach(inp=>{
+    inp.addEventListener("change", ()=>{ state.targetSchools[+inp.dataset.nameidx].name = inp.value; saveState(); });
+  });
+  box.querySelectorAll("[data-statusidx]").forEach(sel=>{
+    sel.addEventListener("change", ()=>{ state.targetSchools[+sel.dataset.statusidx].status = sel.value; saveState(); });
+  });
+  box.querySelectorAll("[data-delidx]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{ state.targetSchools.splice(+btn.dataset.delidx,1); saveState(); renderSchools(); });
+  });
+}
+
+document.getElementById("btnAddSchool").addEventListener("click", ()=>{
+  const inp = document.getElementById("schoolName");
+  const name = inp.value.trim();
+  if(!name) return;
+  state.targetSchools.push({name, status:"do sprawdzenia"});
+  inp.value = "";
+  saveState();
+  renderSchools();
+});
+
+function renderSuccessBanner(bumpResult){
+  const el = document.getElementById("successBanner");
+  const wk = isoWeekKey((()=>{const d=startOfWeek(new Date());d.setDate(d.getDate()-7);return d;})());
+  if(bumpResult && bumpResult.success && state.lastShownBumpedWeek !== wk){
+    el.classList.remove("hidden");
+    el.className = "success-banner";
+    el.innerHTML = `<span class="ico">🔥</span>
+      <p>Udany tydzień! (${Math.round(bumpResult.completion*100)}% planu${bumpResult.bonus? " + mecz":""}) — statystyki właśnie wzrosły. Sprawdź zakładkę <b>Staty</b>.</p>
+      <button id="dismissBanner">✕</button>`;
+    document.getElementById("dismissBanner").addEventListener("click", ()=>{
+      el.classList.add("hidden");
+      state.lastShownBumpedWeek = wk;
+      saveState();
+    });
+  } else {
+    el.classList.add("hidden");
+  }
+}
+
 function renderAll(){
   updateStreak();
   renderToday();
   renderWeekGrid();
   renderStats();
   renderMatches();
+  renderD1();
+  renderSchools();
   renderTip();
   document.getElementById("quotesEditor").value = state.quotes.map(q=>`${q[0]} | ${q[1]||""}`).join("\n");
 }
@@ -617,7 +860,7 @@ document.querySelectorAll("nav.tabs button").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    ["dzis","plan","staty","mecze","ustawienia"].forEach(p=>{
+    ["dzis","plan","staty","mecze","d1","ustawienia"].forEach(p=>{
       document.getElementById("page-"+p).classList.toggle("hidden", p!==btn.dataset.page);
     });
   });
@@ -692,9 +935,10 @@ document.getElementById("btnResetAll").addEventListener("click", ()=>{
 // ================================================================
 // START
 // ================================================================
-maybeBumpStats();
+const bumpResult = maybeBumpStats();
 renderQuote();
 renderAll();
+renderSuccessBanner(bumpResult);
 
 // PWA service worker (opcjonalnie, jeśli plik sw.js jest obok)
 if("serviceWorker" in navigator){
