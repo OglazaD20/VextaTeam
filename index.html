@@ -172,6 +172,22 @@ nav.tabs button .ic{font-size:17px}
 .ptest-form button{grid-column:1/-1}
 
 .email-output{width:100%;min-height:230px;font-size:12.5px;font-family:var(--font-mono);white-space:pre-wrap;line-height:1.5}
+
+/* --- boisko z pozycją zawodnika --- */
+.pitch-wrap{display:flex;justify-content:center;background:#0c1610;border:1px solid var(--border);border-radius:8px;padding:10px 0}
+.pitch-svg{width:100%;max-width:230px;height:auto;display:block}
+.pitch-svg .lines{fill:none;stroke:#2c4432;stroke-width:1.5}
+.pitch-svg .grass-a{fill:#0f1d13}
+.pitch-svg .grass-b{fill:#0c1810}
+.pitch-marker{animation:pitchPulse 2.2s ease-in-out infinite}
+.pitch-marker .ring{fill:none;stroke:var(--red);stroke-width:2;opacity:.55}
+.pitch-marker .dot{fill:var(--red)}
+@keyframes pitchPulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.18)}
+}
+.pitch-caption{text-align:center;margin-top:10px;font-size:13px;color:var(--text-dim)}
+.pitch-caption b{color:var(--text);font-family:var(--font-display);text-transform:uppercase;letter-spacing:.03em}
 </style>
 </head>
 <body>
@@ -189,6 +205,41 @@ nav.tabs button .ic{font-size:17px}
   <!-- ====================== DZIŚ ====================== -->
   <section id="page-dzis">
     <div id="successBanner" class="hidden"></div>
+
+    <section class="card">
+      <h2>Twoja pozycja <span class="tag">boisko</span></h2>
+      <div class="pitch-wrap">
+        <svg class="pitch-svg" viewBox="0 0 300 450" xmlns="http://www.w3.org/2000/svg">
+          <!-- murawa w pasy -->
+          <rect x="0" y="0" width="300" height="450" class="grass-a"/>
+          <rect x="0" y="45" width="300" height="45" class="grass-b"/>
+          <rect x="0" y="135" width="300" height="45" class="grass-b"/>
+          <rect x="0" y="225" width="300" height="45" class="grass-b"/>
+          <rect x="0" y="315" width="300" height="45" class="grass-b"/>
+          <rect x="0" y="405" width="300" height="45" class="grass-b"/>
+          <!-- linie boiska -->
+          <rect x="10" y="10" width="280" height="430" class="lines"/>
+          <line x1="10" y1="225" x2="290" y2="225" class="lines"/>
+          <circle cx="150" cy="225" r="38" class="lines"/>
+          <circle cx="150" cy="225" r="1.5" fill="#2c4432"/>
+          <!-- pole karne górne (atak) -->
+          <rect x="70" y="10" width="160" height="55" class="lines"/>
+          <rect x="110" y="10" width="80" height="22" class="lines"/>
+          <!-- pole karne dolne (własna bramka) -->
+          <rect x="70" y="385" width="160" height="55" class="lines"/>
+          <rect x="110" y="418" width="80" height="22" class="lines"/>
+          <!-- bramki -->
+          <rect x="128" y="6" width="44" height="4" class="lines"/>
+          <rect x="128" y="440" width="44" height="4" class="lines"/>
+          <!-- marker pozycji -->
+          <g id="pitchMarker" class="pitch-marker" transform="translate(70,340)">
+            <circle class="ring" r="14"/>
+            <circle class="dot" r="6"/>
+          </g>
+        </svg>
+      </div>
+      <p class="pitch-caption">Grasz jako <b id="pitchPositionLabel">Lewy obrońca</b> — profil ustawisz w zakładce <b>D1</b>.</p>
+    </section>
 
     <section class="card">
       <h2>Cytat dnia <span class="tag">motywacja</span></h2>
@@ -955,8 +1006,41 @@ function renderProfile(){
 }
 PROFILE_FIELDS.forEach(([id,key])=>{
   const el = document.getElementById(id);
-  if(el) el.addEventListener("change", ()=>{ state.profile[key] = el.value; saveState(); });
+  if(el) el.addEventListener("change", ()=>{ state.profile[key] = el.value; saveState(); if(key==="position") renderPitch(); });
 });
+
+// ---------- boisko z pozycją zawodnika ----------
+// Współrzędne w viewBox 300x450 (własna bramka na dole, atak w górę).
+const POSITION_COORDS = [
+  [/bramkarz|gk/i,                         [150, 415], "Bramkarz"],
+  [/lew.*obro|lb\b/i,                      [70, 340],  "Lewy obrońca"],
+  [/praw.*obro|rb\b/i,                     [230, 340], "Prawy obrońca"],
+  [/środk.*obro|stoper|cb\b/i,             [150, 350], "Środkowy obrońca"],
+  [/defensywn|cdm/i,                       [150, 270], "Defensywny pomocnik"],
+  [/lew.*skrzyd|lw\b/i,                    [55, 190],  "Lewy skrzydłowy"],
+  [/praw.*skrzyd|rw\b/i,                   [245, 190], "Prawy skrzydłowy"],
+  [/lew.*pomoc|lm\b/i,                     [70, 205],  "Lewy pomocnik"],
+  [/praw.*pomoc|rm\b/i,                    [230, 205], "Prawy pomocnik"],
+  [/ofensywn|cam/i,                        [150, 150], "Ofensywny pomocnik"],
+  [/środk.*pomoc|cm\b/i,                   [150, 215], "Środkowy pomocnik"],
+  [/napastnik|napad|st\b|cf\b/i,           [150, 75],  "Napastnik"]
+];
+function positionToMarker(text){
+  const t = (text||"").trim();
+  if(t){
+    const hit = POSITION_COORDS.find(([re])=>re.test(t));
+    if(hit) return { xy: hit[1], label: t };
+  }
+  // domyślnie: lewy obrońca — to główna pozycja tej aplikacji
+  return { xy: [70,340], label: t || "Lewy obrońca" };
+}
+function renderPitch(){
+  const { xy, label } = positionToMarker(state.profile.position);
+  const marker = document.getElementById("pitchMarker");
+  if(marker) marker.setAttribute("transform", `translate(${xy[0]},${xy[1]})`);
+  const lbl = document.getElementById("pitchPositionLabel");
+  if(lbl) lbl.textContent = label;
+}
 
 // ---------- countdown do okien NCAA ----------
 function nextDate(month, day){ // month: 1-12
@@ -1090,6 +1174,7 @@ function renderAll(){
   renderD1();
   renderSchools();
   renderProfile();
+  renderPitch();
   renderCountdown();
   renderPhysicalTests();
   renderTip();
